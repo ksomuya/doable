@@ -2,23 +2,16 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  SafeAreaView,
   TouchableOpacity,
   Image,
   ScrollView,
   ActivityIndicator,
+  StyleSheet,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  Heart,
-  Zap,
-  ClipboardList,
-  BarChart2,
-  Settings,
-  Menu,
-  ArrowUpRight,
-  LogOut,
-} from "lucide-react-native";
+import { Heart, Zap, ClipboardList, ChartBar as BarChart2, Settings, Menu, ArrowUpRight, LogOut } from "lucide-react-native";
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
 import UserStats from "./components/UserStats";
@@ -78,25 +71,25 @@ export default function HomeScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="mt-4 text-gray-600">Loading your study buddy...</Text>
+        <Text style={styles.loadingText}>Loading your study buddy...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white relative">
-      <ScrollView className="flex-1">
-        {/* Simple Header */}
-        <View className="flex-row justify-between items-center px-5 py-4">
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity onPress={handleProfilePress}>
-            <View className="w-12 h-12 bg-gray-800 rounded-full items-center justify-center">
+            <View style={styles.profileImage}>
               <Image
                 source={{
                   uri: user.photoUrl,
                 }}
-                className="w-12 h-12 rounded-full"
+                style={styles.avatar}
               />
             </View>
           </TouchableOpacity>
@@ -107,28 +100,24 @@ export default function HomeScreen() {
         </View>
 
         {/* User Stats */}
-        <View className="px-5 mb-3">
-          <UserStats sreks={user.sreks} xp={user.xp} />
+        <View style={styles.statsSection}>
+          <UserStats
+            health={pet.healthLevel}
+            energy={user.xp}
+            gems={user.sreks}
+            streak={user.streak}
+          />
         </View>
 
         {/* Virtual Pet */}
-        <View className="px-5 mb-3">
+        <View style={styles.petSection}>
           <VirtualPet
-            name={pet.name}
-            foodLevel={pet.foodLevel}
-            healthLevel={pet.healthLevel}
-            mood={pet.mood}
-            streakDays={user.streak}
-            onFeed={feedPet}
-            onPlay={playWithPet}
+            onPetInteract={playWithPet}
           />
         </View>
 
         {/* Chapter Input CTA */}
-        <View className="px-5 mb-3">
-          <Text className="text-base font-bold mb-1">
-            What did you study today?
-          </Text>
+        <View style={styles.chapterSection}>
           <ChapterInput
             onSave={handleChapterSave}
             initialChapters={studiedChapters}
@@ -136,75 +125,75 @@ export default function HomeScreen() {
         </View>
 
         {/* Bento Box Layout */}
-        <View className="px-3 mb-3">
+        <View style={styles.bentoSection}>
           {/* Side by Side Layout */}
-          <View className="flex-row space-x-3">
+          <View style={styles.bentoRow}>
             {/* Left Column - Two Small Boxes */}
-            <View className="flex-1 space-y-3">
+            <View style={styles.bentoLeftColumn}>
               {/* Leader Board Card */}
-              <TouchableOpacity onPress={() => handleCardPress("Leader Board")}>
-                <View className="bg-orange-100 rounded-xl p-3 h-32">
-                  <View className="flex-row justify-between">
-                    <Text className="text-sm font-bold">Leader Board</Text>
-                    <View className="bg-white rounded-full p-1">
-                      <ArrowUpRight size={12} color="#000" />
-                    </View>
+              <TouchableOpacity
+                onPress={() => handleCardPress("Leader Board")}
+                style={[styles.bentoCard, styles.orangeCard]}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Leader Board</Text>
+                  <View style={styles.iconContainer}>
+                    <ArrowUpRight size={12} color="#000" />
                   </View>
-                  <View className="flex-1 items-center justify-center">
-                    <BarChart2 size={28} color="#f97316" />
-                  </View>
+                </View>
+                <View style={styles.cardContent}>
+                  <BarChart2 size={28} color="#f97316" />
                 </View>
               </TouchableOpacity>
 
               {/* Custom Test Card */}
-              <TouchableOpacity onPress={() => handleCardPress("Custom Test")}>
-                <View className="bg-purple-100 rounded-xl p-3 h-32">
-                  <View className="flex-row justify-between">
-                    <Text className="text-sm font-bold">Custom Test</Text>
-                    <View className="bg-white rounded-full p-1">
-                      <ArrowUpRight size={12} color="#000" />
-                    </View>
+              <TouchableOpacity
+                onPress={() => handleCardPress("Custom Test")}
+                style={[styles.bentoCard, styles.purpleCard]}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Custom Test</Text>
+                  <View style={styles.iconContainer}>
+                    <ArrowUpRight size={12} color="#000" />
                   </View>
-                  <View className="flex-1 items-center justify-center">
-                    <Settings size={28} color="#8b5cf6" />
-                  </View>
+                </View>
+                <View style={styles.cardContent}>
+                  <Settings size={28} color="#8b5cf6" />
                 </View>
               </TouchableOpacity>
             </View>
 
             {/* Right Column - One Large Box */}
-            <View className="flex-1">
+            <View style={styles.bentoRightColumn}>
               <TouchableOpacity
                 onPress={() => handleCardPress("Reports")}
-                className="h-full"
+                style={[styles.bentoCard, styles.greenCard, styles.largeCard]}
               >
-                <View className="bg-green-100 rounded-xl p-3 h-[267px]">
-                  <View className="flex-row justify-between">
-                    <Text className="text-sm font-bold">Reports</Text>
-                    <View className="bg-white rounded-full p-1">
-                      <ArrowUpRight size={12} color="#000" />
-                    </View>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Reports</Text>
+                  <View style={styles.iconContainer}>
+                    <ArrowUpRight size={12} color="#000" />
                   </View>
-                  <View className="flex-1 items-center justify-center">
-                    <ClipboardList size={28} color="#10b981" />
-                  </View>
+                </View>
+                <View style={styles.cardContent}>
+                  <ClipboardList size={28} color="#10b981" />
                 </View>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Extra space at the bottom to prevent content from being hidden behind floating button */}
-        <View className="h-16" />
+        {/* Extra space at the bottom */}
+        <View style={styles.bottomSpace} />
       </ScrollView>
 
       {/* Floating Start Practice Button */}
-      <View className="absolute bottom-4 left-0 right-0 px-5 z-10">
+      <View style={styles.floatingButtonContainer}>
         <TouchableOpacity
-          className="bg-black py-3 rounded-xl items-center shadow-lg"
+          style={styles.floatingButton}
           onPress={handleStartPractice}
         >
-          <Text className="text-white text-base font-bold">
+          <Text style={styles.buttonText}>
             Start Practice Session
           </Text>
         </TouchableOpacity>
@@ -212,16 +201,178 @@ export default function HomeScreen() {
 
       {/* Menu Overlay */}
       {showMenu && (
-        <View className="absolute top-16 right-5 bg-white rounded-lg shadow-xl p-2 z-20">
+        <View style={styles.menuOverlay}>
           <TouchableOpacity
-            className="flex-row items-center p-3"
+            style={styles.menuItem}
             onPress={handleSignOut}
           >
             <LogOut size={18} color="#ef4444" />
-            <Text className="ml-2 text-red-500 font-medium">Sign Out</Text>
+            <Text style={styles.menuText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
       )}
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
+  },
+  loadingText: {
+    marginTop: 16,
+    color: "#6B7280",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  profileImage: {
+    width: 48,
+    height: 48,
+    backgroundColor: "#1F2937",
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  statsSection: {
+    marginBottom: 12,
+  },
+  petSection: {
+    marginBottom: 12,
+  },
+  chapterSection: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  bentoSection: {
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  bentoRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  bentoLeftColumn: {
+    flex: 1,
+    gap: 12,
+  },
+  bentoRightColumn: {
+    flex: 1,
+  },
+  bentoCard: {
+    padding: 12,
+    borderRadius: 16,
+  },
+  orangeCard: {
+    backgroundColor: "#FFF7ED",
+    height: 128,
+  },
+  purpleCard: {
+    backgroundColor: "#F5F3FF",
+    height: 128,
+  },
+  greenCard: {
+    backgroundColor: "#ECFDF5",
+  },
+  largeCard: {
+    height: 268,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  iconContainer: {
+    backgroundColor: "white",
+    padding: 4,
+    borderRadius: 12,
+  },
+  cardContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottomSpace: {
+    height: 64,
+  },
+  floatingButtonContainer: {
+    position: "absolute",
+    bottom: 16,
+    left: 20,
+    right: 20,
+    zIndex: 10,
+  },
+  floatingButton: {
+    backgroundColor: "black",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  menuOverlay: {
+    position: "absolute",
+    top: Platform.OS === 'ios' ? 100 : 64,
+    right: 20,
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 8,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 20,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+  },
+  menuText: {
+    marginLeft: 8,
+    color: "#ef4444",
+    fontWeight: "500",
+  },
+});
