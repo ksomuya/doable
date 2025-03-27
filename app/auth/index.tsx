@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { View, Text, Animated, Platform, Dimensions, TouchableOpacity, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Animated,
+  Platform,
+  Dimensions,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Image } from "expo-image";
@@ -51,45 +59,49 @@ const AuthScreen = () => {
     }, 1500);
   };
 
-  const backgroundPattern = "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?q=80&w=2070&auto=format&fit=crop";
-
+  // Using a solid color background instead of an image to avoid image loading issues
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#FFF" }}>
-      {/* Background Pattern */}
-      <Image
-        source={{ uri: backgroundPattern }}
+      {/* Solid Background */}
+      <View
         style={{
           position: "absolute",
           width: "100%",
           height: "100%",
-          opacity: 0.05,
+          backgroundColor: "#F9F9F9",
         }}
       />
 
       {/* Main Content */}
       <View style={{ flex: 1, justifyContent: "space-between", padding: 24 }}>
         {/* Logo and Welcome Text */}
-        <View style={{ alignItems: "center", marginTop: height * 0.30}}>
+        <View style={{ alignItems: "center", marginTop: height * 0.3 }}>
           <Image
-            source={{ uri: "https://api.dicebear.com/7.x/shapes/svg?seed=doable" }}
+            source={{
+              uri: "https://api.dicebear.com/7.x/shapes/svg?seed=doable",
+            }}
             style={{ width: 120, height: 120, marginBottom: 24 }}
           />
-          <Text style={{ 
-            fontSize: 32, 
-            fontWeight: "700", 
-            color: "#ED7930",
-            marginBottom: 12,
-            textAlign: "center"
-          }}>
+          <Text
+            style={{
+              fontSize: 32,
+              fontWeight: "700",
+              color: "#ED7930",
+              marginBottom: 12,
+              textAlign: "center",
+            }}
+          >
             Doable
           </Text>
-          <Text style={{ 
-            fontSize: 18, 
-            color: "#666", 
-            textAlign: "center",
-            maxWidth: "80%",
-            lineHeight: 24
-          }}>
+          <Text
+            style={{
+              fontSize: 18,
+              color: "#666",
+              textAlign: "center",
+              maxWidth: "80%",
+              lineHeight: 24,
+            }}
+          >
             Fun, Interactive & Effective Way to Practice
           </Text>
         </View>
@@ -130,23 +142,27 @@ const AuthScreen = () => {
                   style={{ width: 24, height: 24, marginRight: 12 }}
                 />
               )}
-              <Text style={{ 
-                color: "#FFF", 
-                fontSize: 18, 
-                fontWeight: "600",
-                textAlign: "center"
-              }}>
+              <Text
+                style={{
+                  color: "#FFF",
+                  fontSize: 18,
+                  fontWeight: "600",
+                  textAlign: "center",
+                }}
+              >
                 {isLoading ? "Signing in..." : "Continue with Google"}
               </Text>
             </TouchableOpacity>
           </Animated.View>
 
-          <Text style={{ 
-            fontSize: 12, 
-            color: "#666", 
-            textAlign: "center",
-            marginTop: 16
-          }}>
+          <Text
+            style={{
+              fontSize: 12,
+              color: "#666",
+              textAlign: "center",
+              marginTop: 16,
+            }}
+          >
             By continuing, you agree to our Terms of Service and Privacy Policy
           </Text>
         </View>
@@ -154,24 +170,34 @@ const AuthScreen = () => {
 
       {/* Loading Overlay */}
       {isLoading && (
-        <View style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.3)",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <View style={{
-            backgroundColor: "#FFF",
-            padding: 24,
-            borderRadius: 16,
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.3)",
             alignItems: "center",
-          }}>
-            <ActivityIndicator size="large" color="#ED7930" style={{ marginBottom: 16 }} />
-            <Text style={{ fontSize: 18, fontWeight: "500" }}>Signing in...</Text>
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#FFF",
+              padding: 24,
+              borderRadius: 16,
+              alignItems: "center",
+            }}
+          >
+            <ActivityIndicator
+              size="large"
+              color="#ED7930"
+              style={{ marginBottom: 16 }}
+            />
+            <Text style={{ fontSize: 18, fontWeight: "500" }}>
+              Signing in...
+            </Text>
           </View>
         </View>
       )}

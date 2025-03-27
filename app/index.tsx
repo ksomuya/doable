@@ -11,7 +11,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Heart, Zap, ClipboardList, ChartBar as BarChart2, Settings, Menu, ArrowUpRight, LogOut } from "lucide-react-native";
+import {
+  Heart,
+  Zap,
+  ClipboardList,
+  ChartBar as BarChart2,
+  Settings,
+  Menu,
+  ArrowUpRight,
+  LogOut,
+} from "lucide-react-native";
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
 import UserStats from "./components/UserStats";
@@ -40,7 +49,7 @@ export default function HomeScreen() {
   }, []);
 
   const handleProfilePress = () => {
-    console.log("Navigate to profile");
+    router.push("/profile");
   };
 
   const handleMenuPress = () => {
@@ -111,9 +120,7 @@ export default function HomeScreen() {
 
         {/* Virtual Pet */}
         <View style={styles.petSection}>
-          <VirtualPet
-            onPetInteract={playWithPet}
-          />
+          <VirtualPet onPetInteract={playWithPet} />
         </View>
 
         {/* Chapter Input CTA */}
@@ -193,19 +200,14 @@ export default function HomeScreen() {
           style={styles.floatingButton}
           onPress={handleStartPractice}
         >
-          <Text style={styles.buttonText}>
-            Start Practice Session
-          </Text>
+          <Text style={styles.buttonText}>Start Practice Session</Text>
         </TouchableOpacity>
       </View>
 
       {/* Menu Overlay */}
       {showMenu && (
         <View style={styles.menuOverlay}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={handleSignOut}
-          >
+          <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
             <LogOut size={18} color="#ef4444" />
             <Text style={styles.menuText}>Sign Out</Text>
           </TouchableOpacity>
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
   },
   menuOverlay: {
     position: "absolute",
-    top: Platform.OS === 'ios' ? 100 : 64,
+    top: Platform.OS === "ios" ? 100 : 64,
     right: 20,
     backgroundColor: "white",
     borderRadius: 12,
