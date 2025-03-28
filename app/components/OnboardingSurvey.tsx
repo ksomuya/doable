@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+} from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
@@ -8,6 +15,7 @@ const { width } = Dimensions.get("window");
 
 export interface SurveyData {
   examType: "JEE" | "NEET" | null;
+  currentClass: "Class 11" | "Class 12" | "Dropper" | null;
   preparationLevel: "Beginner" | "Intermediate" | "Advanced" | null;
   studyPreferences: string[];
   dailyStudyTime: "1 hour" | "2-3 hours" | "4+ hours" | null;
@@ -21,6 +29,7 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     examType: null,
+    currentClass: null,
     preparationLevel: null,
     studyPreferences: [],
     dailyStudyTime: null,
@@ -35,6 +44,13 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
       singleSelect: true,
     },
     {
+      title: "Which class are you currently in?",
+      description: "This helps us tailor content to your academic year",
+      options: ["Class 11", "Class 12", "Dropper"],
+      field: "currentClass",
+      singleSelect: true,
+    },
+    {
       title: "What is your current preparation level?",
       description: "This helps us personalize your learning path",
       options: ["Beginner", "Intermediate", "Advanced"],
@@ -42,14 +58,15 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
       singleSelect: true,
     },
     {
-      title: "Select your study preferences",
-      description: "Choose up to 2 learning methods that work best for you",
+      title: "Select your practice preferences",
+      description:
+        "Choose up to 2 practice methods that suit your learning style best",
       options: [
-        "Video-based Learning",
-        "Practice with Questions",
-        "Revision Notes",
-        "Flashcards",
-        "Peer Discussion Groups",
+        "Timed Practice Sessions",
+        "Topic-wise Practice",
+        "Mixed Questions (Interleaved Practice)",
+        "Daily Quick Revision",
+        "Full-Length Mock Tests",
       ],
       field: "studyPreferences",
       singleSelect: false,
@@ -75,7 +92,9 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
       });
     } else {
       const maxSelections = steps[currentStep].maxSelections || 1;
-      const currentSelections = [...surveyData[currentField as keyof SurveyData]] as string[];
+      const currentSelections = [
+        ...surveyData[currentField as keyof SurveyData],
+      ] as string[];
 
       if (currentSelections.includes(option)) {
         setSurveyData({
@@ -133,10 +152,16 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleBack}
-          style={[styles.backButton, currentStep === 0 && styles.backButtonHidden]}
+          style={[
+            styles.backButton,
+            currentStep === 0 && styles.backButtonHidden,
+          ]}
           disabled={currentStep === 0}
         >
-          <ChevronLeft color={currentStep === 0 ? "transparent" : "#000"} size={24} />
+          <ChevronLeft
+            color={currentStep === 0 ? "transparent" : "#000"}
+            size={24}
+          />
         </TouchableOpacity>
         <View style={styles.progressContainer}>
           <View style={styles.progressBackground}>
@@ -153,7 +178,7 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -199,7 +224,10 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.continueButton, !canProceed() && styles.continueButtonDisabled]}
+          style={[
+            styles.continueButton,
+            !canProceed() && styles.continueButtonDisabled,
+          ]}
           onPress={handleNext}
           disabled={!canProceed()}
         >

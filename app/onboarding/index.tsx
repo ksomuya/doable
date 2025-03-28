@@ -26,7 +26,8 @@ const OnboardingScreen = () => {
     setTimeout(() => {
       completeSurvey(surveyData);
       setIsLoading(false);
-      router.replace("/");
+      // Navigate to study progress flow instead of home
+      router.replace("/study-progress");
     }, 1500);
   };
 

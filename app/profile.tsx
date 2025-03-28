@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Modal,
   StyleSheet,
   Linking,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -29,11 +30,13 @@ import {
   ChevronRight,
 } from "lucide-react-native";
 import { useAppContext } from "./context/AppContext";
+import ProfileSetup from "./components/ProfileSetup";
+import { ProfileData } from "./components/ProfileSetup";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, signOut } = useAppContext();
-
+  const { user, signOut, completeProfileSetup } = useAppContext();
+  const [isLoading, setIsLoading] = useState(false);
   const [editNameModalVisible, setEditNameModalVisible] = useState(false);
   const [newName, setNewName] = useState(user.name);
 
@@ -71,6 +74,39 @@ export default function ProfileScreen() {
     });
   };
 
+  const handleProfileSetupComplete = (profileData: ProfileData) => {
+    setIsLoading(true);
+
+    // Simulate API call delay
+    setTimeout(() => {
+      completeProfileSetup(
+        profileData.firstName,
+        profileData.lastName,
+        profileData.dateOfBirth,
+        profileData.parentMobile,
+      );
+      setIsLoading(false);
+    }, 1500);
+  };
+
+  if (!user.isProfileSetup) {
+    return (
+      <>
+        <ProfileSetup onComplete={handleProfileSetupComplete} />
+
+        {/* Loading Overlay */}
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#ED7930" />
+              <Text style={styles.loadingText}>Setting up your profile...</Text>
+            </View>
+          </View>
+        )}
+      </>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -85,7 +121,15 @@ export default function ProfileScreen() {
       <ScrollView style={styles.scrollView}>
         {/* Profile Info Section */}
         <View style={styles.profileSection}>
-          <Image source={{ uri: user.photoUrl }} style={styles.profileImage} />
+          <Image
+            source={{
+              uri:
+                user.photoUrl ||
+                "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback",
+            }}
+            style={styles.profileImage}
+            contentFit="cover"
+          />
           <View style={styles.nameContainer}>
             <Text style={styles.userName}>{user.name}</Text>
             <TouchableOpacity onPress={handleEditName}>
@@ -280,6 +324,37 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: "white",
+    padding: 24,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1F2937",
+  },
   container: {
     flex: 1,
     backgroundColor: "white",

@@ -17,9 +17,8 @@ import {
   ClipboardList,
   ChartBar as BarChart2,
   Settings,
-  Menu,
+  Bell,
   ArrowUpRight,
-  LogOut,
 } from "lucide-react-native";
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
@@ -38,7 +37,6 @@ export default function HomeScreen() {
     signOut,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     // Simulate loading data
@@ -52,8 +50,8 @@ export default function HomeScreen() {
     router.push("/profile");
   };
 
-  const handleMenuPress = () => {
-    setShowMenu(!showMenu);
+  const handleNotificationsPress = () => {
+    router.push("/notifications");
   };
 
   const handleStartPractice = () => {
@@ -103,8 +101,14 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleMenuPress}>
-            <Menu size={28} color="#000" />
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={handleNotificationsPress}
+          >
+            <Bell size={24} color="#000" />
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationCount}>3</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -203,16 +207,6 @@ export default function HomeScreen() {
           <Text style={styles.buttonText}>Start Practice Session</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Menu Overlay */}
-      {showMenu && (
-        <View style={styles.menuOverlay}>
-          <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
-            <LogOut size={18} color="#ef4444" />
-            <Text style={styles.menuText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -350,31 +344,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  menuOverlay: {
+  notificationButton: {
+    position: "relative",
+    padding: 4,
+  },
+  notificationBadge: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 100 : 64,
-    right: 20,
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 8,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    zIndex: 20,
-  },
-  menuItem: {
-    flexDirection: "row",
+    top: 0,
+    right: 0,
+    backgroundColor: "#ef4444",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     alignItems: "center",
-    padding: 12,
+    justifyContent: "center",
   },
-  menuText: {
-    marginLeft: 8,
-    color: "#ef4444",
-    fontWeight: "500",
+  notificationCount: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
   },
 });

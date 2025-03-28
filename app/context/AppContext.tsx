@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { router } from "expo-router";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 
 type PracticeType = "refine" | "recall" | "conquer";
 
 type SurveyData = {
   examType: "JEE" | "NEET" | null;
+  currentClass: "Class 11" | "Class 12" | "Dropper" | null;
   preparationLevel: "Beginner" | "Intermediate" | "Advanced" | null;
   studyPreferences: string[];
   dailyStudyTime: "1 hour" | "2-3 hours" | "4+ hours" | null;
@@ -13,7 +15,10 @@ type SurveyData = {
 type UserData = {
   isAuthenticated: boolean;
   isOnboarded: boolean;
+  isProfileSetup: boolean;
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   photoUrl: string;
   sreks: number;
@@ -21,6 +26,8 @@ type UserData = {
   level: number;
   streak: number;
   rank: number;
+  dateOfBirth: Date | null;
+  parentMobile: string;
 };
 
 type PetData = {
@@ -52,6 +59,13 @@ type AppContextType = {
   signOut: () => void;
   // Onboarding actions
   completeSurvey: (data: SurveyData) => void;
+  // Profile actions
+  completeProfileSetup: (
+    firstName: string,
+    lastName: string,
+    dateOfBirth: Date | null,
+    parentMobile: string,
+  ) => void;
   // Pet actions
   feedPet: () => void;
   playWithPet: () => void;
@@ -75,7 +89,10 @@ type AppContextType = {
 const defaultUser: UserData = {
   isAuthenticated: false,
   isOnboarded: false,
+  isProfileSetup: false,
   name: "Student",
+  firstName: "",
+  lastName: "",
   email: "student@example.com",
   photoUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=doable",
   sreks: 0,
@@ -83,6 +100,8 @@ const defaultUser: UserData = {
   level: 1,
   streak: 0,
   rank: 5000,
+  dateOfBirth: null,
+  parentMobile: "",
 };
 
 const defaultPet: PetData = {
@@ -95,6 +114,7 @@ const defaultPet: PetData = {
 
 const defaultSurveyData: SurveyData = {
   examType: null,
+  currentClass: null,
   preparationLevel: null,
   studyPreferences: [],
   dailyStudyTime: null,
@@ -115,6 +135,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
+  const { isSignedIn, user: clerkUser } = useUser();
+  const { signOut: clerkSignOut } = useAuth();
   const [user, setUser] = useState<UserData>(defaultUser);
   const [pet, setPet] = useState<PetData>(defaultPet);
   const [surveyData, setSurveyData] = useState<SurveyData>(defaultSurveyData);
@@ -122,6 +144,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     defaultPracticeSession,
   );
   const [studiedChapters, setStudiedChapters] = useState<string[]>([]);
+
+  // Update user data when Clerk user changes
+  useEffect(() => {
+    if (isSignedIn && clerkUser) {
+      setUser({
+        ...user,
+        isAuthenticated: true,
+        name:
+          clerkUser.fullName ||
+          `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim() ||
+          "Student",
+        firstName: clerkUser.firstName || "",
+        lastName: clerkUser.lastName || "",
+        email:
+          clerkUser.primaryEmailAddress?.emailAddress || "student@example.com",
+        photoUrl:
+          clerkUser.imageUrl ||
+          "https://api.dicebear.com/7.x/avataaars/svg?seed=doable",
+        // Keep other user data like sreks, xp, etc.
+      });
+    } else {
+      setUser(defaultUser);
+    }
+  }, [isSignedIn, clerkUser]);
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -139,26 +185,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     updatePetMood();
   }, [pet.foodLevel, pet.healthLevel]);
 
-  // Auth actions
+  // Auth actions - now just placeholders as Clerk handles the actual auth
   const signIn = () => {
-    // Simulate successful sign in
-    setUser({
-      ...user,
-      isAuthenticated: true,
-      name: "Rahul S.",
-      email: "rahul@example.com",
-      photoUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=rahul",
-      sreks: 1250,
-      xp: 3750,
-      level: 5,
-      streak: 3,
-      rank: 1234,
-    });
+    // This is now handled by Clerk, but we keep the method for compatibility
+    // The actual user state update happens in the useEffect above when Clerk user changes
   };
 
-  const signOut = () => {
-    setUser(defaultUser);
-    router.replace("/auth");
+  const signOut = async () => {
+    try {
+      await clerkSignOut();
+      setUser(defaultUser);
+      router.replace("/auth");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   // Onboarding actions
@@ -168,7 +208,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       ...user,
       isOnboarded: true,
     });
-    router.replace("/");
+    // Router navigation is handled in the component
+  };
+
+  // Profile setup actions
+  const completeProfileSetup = (
+    firstName: string,
+    lastName: string,
+    dateOfBirth: Date | null,
+    parentMobile: string,
+  ) => {
+    setUser({
+      ...user,
+      isProfileSetup: true,
+      firstName,
+      lastName,
+      name: `${firstName} ${lastName}`,
+      dateOfBirth,
+      parentMobile,
+    });
+    // Router navigation is handled in the component
   };
 
   // Pet actions
@@ -274,6 +333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     signIn,
     signOut,
     completeSurvey,
+    completeProfileSetup,
     feedPet,
     playWithPet,
     updatePetMood,

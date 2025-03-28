@@ -33,6 +33,7 @@ const GoogleSignIn = ({
               uri: "https://developers.google.com/identity/images/g-logo.png",
             }}
             style={{ width: 24, height: 24 }}
+            contentFit="contain"
             className="mr-3"
           />
         )}
