@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  Heart,
+  Thermometer,
   Zap,
   ClipboardList,
   ChartBar as BarChart2,
@@ -23,6 +23,7 @@ import {
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
 import UserStats from "./components/UserStats";
+import TemperatureAdjustmentModal from "./components/TemperatureAdjustmentModal";
 import { useAppContext } from "./context/AppContext";
 
 export default function HomeScreen() {
@@ -34,16 +35,32 @@ export default function HomeScreen() {
     updateStudiedChapters,
     feedPet,
     playWithPet,
+    updateTemperature,
+    coolDownPenguin,
     signOut,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
+  const [showTemperatureModal, setShowTemperatureModal] = useState(false);
 
   useEffect(() => {
     // Simulate loading data
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 1000);
+
+    // Update temperature when component mounts
+    updateTemperature();
+
     return () => clearTimeout(timer);
+  }, []);
+
+  // Check temperature periodically
+  useEffect(() => {
+    const temperatureCheckInterval = setInterval(() => {
+      updateTemperature();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(temperatureCheckInterval);
   }, []);
 
   const handleProfilePress = () => {
@@ -52,6 +69,10 @@ export default function HomeScreen() {
 
   const handleNotificationsPress = () => {
     router.push("/notifications");
+  };
+
+  const handleStreakPress = () => {
+    router.push("/activity");
   };
 
   const handleStartPractice = () => {
@@ -70,6 +91,18 @@ export default function HomeScreen() {
 
   const handleChapterSave = (savedChapters: string[]) => {
     updateStudiedChapters(savedChapters);
+  };
+
+  const handleTemperaturePress = () => {
+    setShowTemperatureModal(true);
+  };
+
+  const handleCoolDown = () => {
+    const success = coolDownPenguin();
+    if (success) {
+      // Close modal after successful cool down
+      setTimeout(() => setShowTemperatureModal(false), 1000);
+    }
   };
 
   const handleSignOut = () => {
@@ -115,17 +148,32 @@ export default function HomeScreen() {
         {/* User Stats */}
         <View style={styles.statsSection}>
           <UserStats
-            health={pet.healthLevel}
+            temperature={pet.temperature}
             energy={user.xp}
-            gems={user.sreks}
+            snowballs={user.snowballs}
             streak={user.streak}
+            onTemperaturePress={handleTemperaturePress}
+            onStreakPress={handleStreakPress}
           />
         </View>
 
         {/* Virtual Pet */}
         <View style={styles.petSection}>
-          <VirtualPet onPetInteract={playWithPet} />
+          <VirtualPet
+            onPetInteract={playWithPet}
+            temperature={pet.temperature}
+          />
         </View>
+
+        {/* Temperature Adjustment Modal */}
+        <TemperatureAdjustmentModal
+          visible={showTemperatureModal}
+          onClose={() => setShowTemperatureModal(false)}
+          temperature={pet.temperature}
+          snowballs={user.snowballs}
+          onAdjustTemperature={handleCoolDown}
+          adjustmentCost={50}
+        />
 
         {/* Chapter Input CTA */}
         <View style={styles.chapterSection}>

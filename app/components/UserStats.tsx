@@ -1,26 +1,47 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { Heart, Zap, Hexagon, Flame } from "lucide-react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Thermometer, Zap, Snowflake, Flame } from "lucide-react-native";
 
 interface UserStatsProps {
-  health?: number;
+  temperature?: number;
   energy?: number;
-  gems?: number;
+  snowballs?: number;
   streak?: number;
+  onTemperaturePress?: () => void;
+  onStreakPress?: () => void;
 }
 
 const UserStats = ({
-  health = 100,
+  temperature = 30,
   energy = 126,
-  gems = 505,
+  snowballs = 505,
   streak = 7,
+  onTemperaturePress = () => {},
+  onStreakPress = () => {},
 }: UserStatsProps) => {
+  // Function to determine temperature color based on value
+  const getTemperatureColor = (temp: number) => {
+    if (temp <= 20) return "#3B82F6"; // Blue - optimal
+    if (temp <= 50) return "#FBBF24"; // Yellow - warning
+    return "#EF4444"; // Red - critical
+  };
+
   return (
     <View style={styles.statsContainer}>
-      <View style={styles.statPill}>
-        <Heart size={20} color="#FF5757" />
-        <Text style={styles.statText}>{health}</Text>
-      </View>
+      <TouchableOpacity
+        style={[
+          styles.statPill,
+          { borderColor: getTemperatureColor(temperature) },
+        ]}
+        onPress={onTemperaturePress}
+      >
+        <Thermometer size={20} color={getTemperatureColor(temperature)} />
+        <Text
+          style={[styles.statText, { color: getTemperatureColor(temperature) }]}
+        >
+          {temperature}°
+        </Text>
+      </TouchableOpacity>
 
       <View style={styles.statPill}>
         <Zap size={20} color="#FFB443" />
@@ -28,14 +49,17 @@ const UserStats = ({
       </View>
 
       <View style={styles.statPill}>
-        <Hexagon size={20} color="#7B61FF" />
-        <Text style={styles.statText}>{gems}</Text>
+        <Snowflake size={20} color="#3B82F6" />
+        <Text style={styles.statText}>{snowballs}</Text>
       </View>
 
-      <View style={[styles.statPill, styles.streakPill]}>
+      <TouchableOpacity
+        style={[styles.statPill, styles.streakPill]}
+        onPress={onStreakPress}
+      >
         <Flame size={20} color="#FF4D4D" />
         <Text style={styles.statText}>{streak}</Text>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -64,6 +88,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   streakPill: {
     backgroundColor: "#FFF5F5",

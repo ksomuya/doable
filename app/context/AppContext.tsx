@@ -21,7 +21,7 @@ type UserData = {
   lastName: string;
   email: string;
   photoUrl: string;
-  sreks: number;
+  snowballs: number;
   xp: number;
   level: number;
   streak: number;
@@ -33,9 +33,10 @@ type UserData = {
 type PetData = {
   name: string;
   foodLevel: number;
-  healthLevel: number;
+  temperature: number;
   mood: "happy" | "neutral" | "sad";
   level: number;
+  lastTemperatureUpdate: number;
 };
 
 type PracticeSession = {
@@ -70,6 +71,8 @@ type AppContextType = {
   feedPet: () => void;
   playWithPet: () => void;
   updatePetMood: () => void;
+  updateTemperature: () => void;
+  coolDownPenguin: () => boolean;
   // Practice actions
   startPracticeSession: (
     subject: string,
@@ -95,7 +98,7 @@ const defaultUser: UserData = {
   lastName: "",
   email: "student@example.com",
   photoUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=doable",
-  sreks: 0,
+  snowballs: 0,
   xp: 0,
   level: 1,
   streak: 0,
@@ -105,11 +108,12 @@ const defaultUser: UserData = {
 };
 
 const defaultPet: PetData = {
-  name: "Buddy",
+  name: "Frosty",
   foodLevel: 70,
-  healthLevel: 85,
+  temperature: 20,
   mood: "happy",
   level: 1,
+  lastTemperatureUpdate: Date.now(),
 };
 
 const defaultSurveyData: SurveyData = {
@@ -180,10 +184,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [user.isAuthenticated, user.isOnboarded]);
 
-  // Update pet mood based on food and health levels
+  // Update pet mood based on food and temperature levels
   useEffect(() => {
     updatePetMood();
-  }, [pet.foodLevel, pet.healthLevel]);
+  }, [pet.foodLevel, pet.temperature]);
+
+  // Update temperature over time
+  useEffect(() => {
+    const temperatureInterval = setInterval(() => {
+      updateTemperature();
+    }, 60000); // Check every minute
+
+    return () => clearInterval(temperatureInterval);
+  }, []);
 
   // Auth actions - now just placeholders as Clerk handles the actual auth
   const signIn = () => {
@@ -239,18 +252,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const playWithPet = () => {
+    // Playing with the penguin helps cool it down
     setPet({
       ...pet,
-      healthLevel: Math.min(pet.healthLevel + 10, 100),
+      temperature: Math.max(pet.temperature - 5, 10),
+      lastTemperatureUpdate: Date.now(),
     });
   };
 
   const updatePetMood = () => {
     let newMood: "happy" | "neutral" | "sad" = "neutral";
 
-    if (pet.foodLevel > 70 && pet.healthLevel > 70) {
+    if (pet.foodLevel > 70 && pet.temperature < 30) {
       newMood = "happy";
-    } else if (pet.foodLevel < 30 || pet.healthLevel < 30) {
+    } else if (pet.foodLevel < 30 || pet.temperature > 60) {
       newMood = "sad";
     }
 
@@ -260,6 +275,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         mood: newMood,
       });
     }
+  };
+
+  const updateTemperature = () => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - pet.lastTemperatureUpdate;
+
+    // Only update if at least a minute has passed
+    if (timeSinceLastUpdate >= 60000) {
+      // Calculate how many minutes have passed
+      const minutesPassed = Math.floor(timeSinceLastUpdate / 60000);
+
+      // Temperature increases by 1 degree every minute
+      const temperatureIncrease = minutesPassed;
+
+      setPet({
+        ...pet,
+        temperature: Math.min(pet.temperature + temperatureIncrease, 100),
+        lastTemperatureUpdate: now,
+      });
+    }
+  };
+
+  const coolDownPenguin = () => {
+    const coolDownCost = 50; // Snowballs needed to cool down
+
+    if (user.snowballs >= coolDownCost) {
+      setUser({
+        ...user,
+        snowballs: user.snowballs - coolDownCost,
+      });
+
+      setPet({
+        ...pet,
+        temperature: Math.max(pet.temperature - 20, 10),
+        lastTemperatureUpdate: Date.now(),
+      });
+
+      return true; // Successfully cooled down
+    }
+
+    return false; // Not enough snowballs
   };
 
   // Practice actions
@@ -298,13 +354,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const completePracticeSession = () => {
     // Calculate rewards
     const xpEarned = practiceSession.currentXP;
-    const sreksEarned = Math.floor(xpEarned * 0.2); // 20% of XP as Sreks
+    const snowballsEarned = Math.floor(xpEarned * 0.2); // 20% of XP as snowballs
 
     // Update user stats
     setUser({
       ...user,
       xp: user.xp + xpEarned,
-      sreks: user.sreks + sreksEarned,
+      snowballs: user.snowballs + snowballsEarned,
       streak: user.streak + 1,
     });
 
@@ -312,7 +368,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setPet({
       ...pet,
       foodLevel: Math.min(pet.foodLevel + 10, 100),
-      healthLevel: Math.min(pet.healthLevel + 15, 100),
+      temperature: Math.max(pet.temperature - 15, 10), // Practice cools down the penguin
+      lastTemperatureUpdate: Date.now(),
     });
 
     // Reset practice session
@@ -337,6 +394,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     feedPet,
     playWithPet,
     updatePetMood,
+    updateTemperature,
+    coolDownPenguin,
     startPracticeSession,
     updatePracticeProgress,
     completePracticeSession,
