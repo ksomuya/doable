@@ -2,240 +2,115 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
-  Platform,
-  TextInput,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, Search, Beaker, Brain, Calculator, Clock, Users, Trophy } from "lucide-react-native";
-import { Image } from "expo-image";
-import Animated, { FadeInRight, FadeOutLeft, FadeIn } from "react-native-reanimated";
-
-const { width } = Dimensions.get("window");
+import { ArrowLeft } from "lucide-react-native";
 
 type Subject = {
   id: string;
   name: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
-  difficulty: "Beginner" | "Intermediate" | "Advanced";
-  image: string;
-  topics: string[];
-  stats: {
-    activeUsers: number;
-    avgCompletionTime: string;
-    successRate: number;
-  };
 };
 
 const subjects: Subject[] = [
   {
+    id: "mathematics",
+    name: "Mathematics",
+  },
+  {
     id: "physics",
     name: "Physics",
-    description: "Master the fundamental laws of the universe through interactive problem-solving",
-    icon: <Calculator size={24} color="white" />,
-    color: "#3B82F6",
-    difficulty: "Intermediate",
-    image: "https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?w=800&auto=format&fit=crop",
-    topics: ["Mechanics", "Thermodynamics", "Waves", "Electromagnetism"],
-    stats: {
-      activeUsers: 1234,
-      avgCompletionTime: "45 min",
-      successRate: 78,
-    },
   },
   {
     id: "chemistry",
     name: "Chemistry",
-    description: "Explore the building blocks of matter through engaging experiments",
-    icon: <Beaker size={24} color="white" />,
-    color: "#10B981",
-    difficulty: "Advanced",
-    image: "https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?w=800&auto=format&fit=crop",
-    topics: ["Organic", "Inorganic", "Physical", "Analytical"],
-    stats: {
-      activeUsers: 987,
-      avgCompletionTime: "55 min",
-      successRate: 72,
-    },
-  },
-  {
-    id: "mathematics",
-    name: "Mathematics",
-    description: "Develop problem-solving skills with step-by-step guidance",
-    icon: <Brain size={24} color="white" />,
-    color: "#8B5CF6",
-    difficulty: "Intermediate",
-    image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800&auto=format&fit=crop",
-    topics: ["Algebra", "Calculus", "Geometry", "Statistics"],
-    stats: {
-      activeUsers: 1567,
-      avgCompletionTime: "40 min",
-      successRate: 75,
-    },
   },
 ];
 
 export default function PracticePage() {
   const router = useRouter();
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubjectSelect = (subject: Subject) => {
-    setIsLoading(true);
-    setSelectedSubject(subject);
-    
-    setTimeout(() => {
-      setIsLoading(false);
-      router.push({
-        pathname: "/practice/question",
-        params: { subject: subject.id }
-      });
-    }, 1000);
+  const handleSubjectSelect = (subjectId: string) => {
+    setSelectedSubject(subjectId);
   };
 
-  const filteredSubjects = subjects.filter(subject =>
-    subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    subject.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    subject.topics.some(topic => topic.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleContinue = () => {
+    if (!selectedSubject) return;
 
-  const getDifficultyColor = (difficulty: Subject["difficulty"]) => {
-    switch (difficulty) {
-      case "Beginner": return "#22C55E";
-      case "Intermediate": return "#F59E0B";
-      case "Advanced": return "#EF4444";
-      default: return "#6B7280";
-    }
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push("/practice/type");
+    }, 300);
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.backButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <ArrowLeft size={24} color="#1F2937" />
+            <ArrowLeft size={22} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Choose Subject</Text>
+          <View style={styles.progressBar}>
+            <View style={styles.progressFill} />
+          </View>
+          <View style={styles.placeholder} />
         </View>
 
-        {/* Search Bar */}
-        <Animated.View 
-          entering={FadeIn.delay(300)}
-          style={styles.searchContainer}
-        >
-          <Search size={20} color="#6B7280" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search subjects or topics..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9CA3AF"
-          />
-        </Animated.View>
+        <ScrollView style={styles.content}>
+          <Text style={styles.title}>Subjects</Text>
+          <Text style={styles.subtitle}>
+            Select any one Subject to start practicing
+          </Text>
 
-        <ScrollView 
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-        >
-          {/* Welcome Message */}
-          <Animated.Text 
-            entering={FadeIn.delay(200)}
-            style={styles.welcomeText}
-          >
-            Ready to practice? Choose your subject and let's begin!
-          </Animated.Text>
-
-          {/* Subject Cards */}
-          {filteredSubjects.map((subject, index) => (
-            <Animated.View
-              key={subject.id}
-              entering={FadeInRight.delay(index * 100)}
-              exiting={FadeOutLeft}
-            >
+          <View style={styles.subjectsContainer}>
+            {subjects.map((subject) => (
               <TouchableOpacity
-                style={styles.subjectCard}
-                onPress={() => handleSubjectSelect(subject)}
-                disabled={isLoading}
+                key={subject.id}
+                style={[
+                  styles.subjectItem,
+                  selectedSubject === subject.id && styles.selectedSubjectItem,
+                ]}
+                onPress={() => handleSubjectSelect(subject.id)}
                 activeOpacity={0.7}
               >
-                <Image
-                  source={{ uri: subject.image }}
-                  style={styles.subjectImage}
-                  contentFit="cover"
-                />
-                
-                <View style={styles.cardOverlay} />
-                
-                <View style={styles.cardContent}>
-                  <View style={[styles.iconContainer, { backgroundColor: subject.color }]}>
-                    {subject.icon}
-                  </View>
-                  
-                  <View style={styles.subjectInfo}>
-                    <Text style={styles.subjectName}>{subject.name}</Text>
-                    <Text style={styles.subjectDescription}>{subject.description}</Text>
-                    
-                    <View style={styles.subjectMeta}>
-                      <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(subject.difficulty) + '20' }]}>
-                        <Text style={[styles.difficultyText, { color: getDifficultyColor(subject.difficulty) }]}>
-                          {subject.difficulty}
-                        </Text>
-                      </View>
-                      
-                      <Text style={styles.topicsCount}>
-                        {subject.topics.length} topics
-                      </Text>
-                    </View>
-
-                    {/* Stats Row */}
-                    <View style={styles.statsRow}>
-                      <View style={styles.statItem}>
-                        <Users size={16} color="#6B7280" />
-                        <Text style={styles.statText}>{subject.stats.activeUsers} active</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Clock size={16} color="#6B7280" />
-                        <Text style={styles.statText}>{subject.stats.avgCompletionTime}</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Trophy size={16} color="#6B7280" />
-                        <Text style={styles.statText}>{subject.stats.successRate}% success</Text>
-                      </View>
-                    </View>
-                  </View>
+                <View style={styles.radioButton}>
+                  {selectedSubject === subject.id && (
+                    <View style={styles.radioButtonSelected} />
+                  )}
                 </View>
+                <Text style={styles.subjectName}>{subject.name}</Text>
               </TouchableOpacity>
-            </Animated.View>
-          ))}
-
-          {filteredSubjects.length === 0 && (
-            <View style={styles.noResults}>
-              <Text style={styles.noResultsText}>No subjects found matching "{searchQuery}"</Text>
-              <Text style={styles.noResultsSubtext}>Try searching for a different subject or topic</Text>
-            </View>
-          )}
+            ))}
+          </View>
         </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              !selectedSubject && styles.disabledButton,
+            ]}
+            onPress={handleContinue}
+            disabled={!selectedSubject || isLoading}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
 
         {isLoading && (
           <View style={styles.loadingOverlay}>
-            <View style={styles.loadingContent}>
-              <ActivityIndicator size="large" color="#4F46E5" />
-              <Text style={styles.loadingText}>Preparing your practice session...</Text>
-            </View>
+            <ActivityIndicator size="large" color="#4F46E5" />
           </View>
         )}
       </View>
@@ -255,176 +130,106 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    backgroundColor: "#FFFFFF",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   backButton: {
     padding: 8,
-    marginRight: 12,
-    borderRadius: 12,
-    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    margin: 20,
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  searchInput: {
+  progressBar: {
     flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#1F2937",
+    height: 4,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 2,
+    marginHorizontal: 12,
+  },
+  progressFill: {
+    width: "33%",
+    height: "100%",
+    backgroundColor: "#22C55E",
+    borderRadius: 2,
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,
+    paddingHorizontal: 20,
   },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 0,
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#000000",
+    marginTop: 20,
+    marginBottom: 8,
   },
-  welcomeText: {
+  subtitle: {
     fontSize: 16,
     color: "#6B7280",
-    marginBottom: 20,
-    textAlign: "center",
+    marginBottom: 32,
   },
-  subjectCard: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    marginBottom: 20,
-    overflow: "hidden",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  subjectsContainer: {
+    gap: 16,
   },
-  subjectImage: {
-    width: "100%",
-    height: 160,
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.3)",
-  },
-  cardContent: {
-    padding: 20,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  subjectItem: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
-  subjectInfo: {
-    flex: 1,
+  selectedSubjectItem: {
+    borderColor: "#4F46E5",
+    backgroundColor: "#F5F7FF",
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  radioButtonSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#4F46E5",
   },
   subjectName: {
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "500",
     color: "#1F2937",
-    marginBottom: 8,
   },
-  subjectDescription: {
+  footer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  continueButton: {
+    backgroundColor: "#000000",
+    paddingVertical: 16,
+    borderRadius: 100,
+    alignItems: "center",
+  },
+  disabledButton: {
+    backgroundColor: "#D1D5DB",
+  },
+  continueButtonText: {
+    color: "white",
     fontSize: 16,
-    color: "#4B5563",
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  subjectMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  difficultyText: {
-    fontSize: 14,
     fontWeight: "600",
-  },
-  topicsCount: {
-    fontSize: 14,
-    color: "#6B7280",
-    fontWeight: "500",
-  },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#F9FAFB",
-    padding: 12,
-    borderRadius: 12,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statText: {
-    fontSize: 14,
-    color: "#4B5563",
-    fontWeight: "500",
-  },
-  noResults: {
-    alignItems: "center",
-    padding: 40,
-  },
-  noResultsText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#374151",
-    marginBottom: 8,
-  },
-  noResultsSubtext: {
-    fontSize: 16,
-    color: "#6B7280",
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: "rgba(255, 255, 255, 0.8)",
     justifyContent: "center",
     alignItems: "center",
-  },
-  loadingContent: {
-    backgroundColor: "white",
-    padding: 24,
-    borderRadius: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#1F2937",
-    fontWeight: "600",
   },
 });
