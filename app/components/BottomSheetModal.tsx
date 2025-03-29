@@ -10,7 +10,13 @@ import {
   TouchableWithoutFeedback,
   Platform,
 } from "react-native";
-import { ChevronDown, Check, ChevronUp } from "lucide-react-native";
+import {
+  ChevronDown,
+  Check,
+  ChevronUp,
+  ChevronRight,
+  Book,
+} from "lucide-react-native";
 
 const { height } = Dimensions.get("window");
 
@@ -102,7 +108,7 @@ const BottomSheetModal = ({
         >
           <View style={styles.header}>
             <View style={styles.handle} />
-            <Text style={styles.title}>{subject.name} Chapters</Text>
+            <Text style={styles.title}>Your Study Progress</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <ChevronDown size={24} color="#6B7280" />
             </TouchableOpacity>
@@ -110,8 +116,18 @@ const BottomSheetModal = ({
 
           <ScrollView style={styles.content}>
             <Text style={styles.instruction}>
-              Select the chapters and topics you've already studied
+              Please indicate which topics you've already covered in your class
+              to help us personalize your practice sessions
             </Text>
+
+            <View style={styles.subjectHeader}>
+              <View
+                style={[styles.subjectIcon, { backgroundColor: subject.color }]}
+              >
+                <Book size={24} color="white" />
+              </View>
+              <Text style={styles.subjectName}>{subject.name}</Text>
+            </View>
 
             {subject.chapters.map((chapter) => (
               <View key={chapter.id} style={styles.chapterContainer}>
@@ -176,17 +192,27 @@ const BottomSheetModal = ({
                         ]}
                         onPress={() => onTopicToggle(topic.id)}
                       >
-                        <Text
-                          style={[
-                            styles.topicText,
-                            selectedTopics.includes(topic.id) && {
-                              color: subject.color,
-                              fontWeight: "600",
-                            },
-                          ]}
-                        >
-                          {topic.name}
-                        </Text>
+                        <View style={styles.topicContent}>
+                          <View
+                            style={[
+                              styles.topicDot,
+                              selectedTopics.includes(topic.id) && {
+                                backgroundColor: subject.color,
+                              },
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.topicText,
+                              selectedTopics.includes(topic.id) && {
+                                color: subject.color,
+                                fontWeight: "600",
+                              },
+                            ]}
+                          >
+                            {topic.name}
+                          </Text>
+                        </View>
                         {selectedTopics.includes(topic.id) && (
                           <Check size={16} color={subject.color} />
                         )}
@@ -201,6 +227,19 @@ const BottomSheetModal = ({
           </ScrollView>
 
           <View style={styles.footer}>
+            <View style={styles.summaryContainer}>
+              <Text style={styles.summaryText}>
+                {selectedTopicsCount > 0 ? (
+                  <>
+                    You've selected {selectedTopicsCount}{" "}
+                    {selectedTopicsCount === 1 ? "topic" : "topics"}
+                  </>
+                ) : (
+                  "No topics selected yet"
+                )}
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={[
                 styles.confirmButton,
@@ -211,9 +250,9 @@ const BottomSheetModal = ({
               disabled={selectedTopicsCount === 0}
             >
               <Text style={styles.confirmButtonText}>
-                Add {selectedTopicsCount}{" "}
-                {selectedTopicsCount === 1 ? "Topic" : "Topics"}
+                {selectedTopicsCount > 0 ? "Continue" : "Skip for now"}
               </Text>
+              <ChevronRight size={20} color="white" />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -269,7 +308,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     color: "#1F2937",
   },
@@ -285,7 +324,29 @@ const styles = StyleSheet.create({
   instruction: {
     fontSize: 16,
     color: "#4B5563",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  subjectHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
+    backgroundColor: "#F9FAFB",
+    padding: 16,
+    borderRadius: 12,
+  },
+  subjectIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  subjectName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
   },
   chapterContainer: {
     marginBottom: 16,
@@ -328,26 +389,35 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   topicsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     padding: 16,
     backgroundColor: "white",
-    gap: 8,
   },
   topicChip: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#D1D5DB",
+    borderColor: "#E5E7EB",
     backgroundColor: "#F9FAFB",
+    marginBottom: 8,
+  },
+  topicContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  topicDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#D1D5DB",
+    marginRight: 12,
   },
   topicText: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#4B5563",
-    marginRight: 4,
   },
   spacer: {
     height: 100,
@@ -357,16 +427,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
   },
+  summaryContainer: {
+    backgroundColor: "#F0FDF4",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: "#065F46",
+    textAlign: "center",
+  },
   confirmButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
   },
   confirmButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "white",
+    marginRight: 8,
   },
   disabledButton: {
     backgroundColor: "#D1D5DB",

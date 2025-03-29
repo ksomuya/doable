@@ -1,5 +1,11 @@
 import React, { useEffect } from "react";
-import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Image as RNImage,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -57,35 +63,20 @@ const VirtualPet = ({
 
         <View style={styles.speechBubble}>
           <Text style={styles.speechText}>
-            Hi, {user.firstName || user.name.split(" ")[0]}!
+            Hi,{" "}
+            {user.firstName || (user.name ? user.name.split(" ")[0] : "there")}!
           </Text>
           <View style={styles.speechTail} />
         </View>
 
         <View style={styles.pet}>
-          <View style={styles.penguinBody}>
-            <View style={styles.penguinHead}>
-              <View style={styles.penguinFace}>
-                <View style={styles.eyes}>
-                  <View style={styles.eye} />
-                  <View style={styles.eye} />
-                </View>
-                <View style={styles.blush} />
-                <View style={styles.blushRight} />
-                <View style={styles.beak} />
-              </View>
-            </View>
-
-            <View style={styles.wings}>
-              <Animated.View style={[styles.wing, animatedWingStyle]} />
-              <View style={styles.wing} />
-            </View>
-
-            <View style={styles.feet}>
-              <View style={styles.foot} />
-              <View style={styles.foot} />
-            </View>
-          </View>
+          <RNImage
+            source={{
+              uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin&backgroundColor=orange",
+            }}
+            style={styles.penguinImage}
+            onError={() => console.log("Failed to load penguin image")}
+          />
         </View>
       </TouchableOpacity>
     </View>
@@ -166,79 +157,12 @@ const styles = StyleSheet.create({
   },
   pet: {
     alignItems: "center",
+    justifyContent: "center",
   },
-  penguinBody: {
-    alignItems: "center",
-  },
-  penguinHead: {
-    width: 90,
-    height: 90,
-    backgroundColor: "#1E293B",
-    borderRadius: 45,
-  },
-  penguinFace: {
-    width: 70,
-    height: 70,
-    backgroundColor: "white",
-    borderRadius: 35,
-    marginTop: 10,
-    alignItems: "center",
-  },
-  eyes: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: 40,
-    marginTop: 8,
-  },
-  eye: {
-    width: 10,
-    height: 10,
-    backgroundColor: "black",
-    borderRadius: 5,
-  },
-  blush: {
-    width: 8,
-    height: 8,
-    backgroundColor: "#F87171",
-    borderRadius: 4,
-    position: "absolute",
-    left: 10,
-    bottom: 20,
-  },
-  blushRight: {
-    width: 8,
-    height: 8,
-    backgroundColor: "#F87171",
-    borderRadius: 4,
-    position: "absolute",
-    right: 10,
-    bottom: 20,
-  },
-  beak: {
-    width: 12,
-    height: 8,
-    backgroundColor: "#F59E0B",
-    borderRadius: 4,
-  },
-  wings: {
-    flexDirection: "row",
-    width: 100,
-  },
-  wing: {
-    width: 25,
-    height: 50,
-    backgroundColor: "#1E293B",
-    borderRadius: 12,
-  },
-  feet: {
-    flexDirection: "row",
-    width: 60,
-  },
-  foot: {
-    width: 16,
-    height: 8,
-    backgroundColor: "#F59E0B",
-    borderRadius: 4,
+  penguinImage: {
+    width: 120,
+    height: 120,
+    resizeMode: "contain",
   },
 });
 

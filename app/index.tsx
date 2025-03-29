@@ -24,6 +24,7 @@ import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
 import UserStats from "./components/UserStats";
 import TemperatureAdjustmentModal from "./components/TemperatureAdjustmentModal";
+import PetDetailModal from "./components/PetDetailModal";
 import { useAppContext } from "./context/AppContext";
 
 export default function HomeScreen() {
@@ -38,9 +39,12 @@ export default function HomeScreen() {
     updateTemperature,
     coolDownPenguin,
     signOut,
+    practiceSession,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
   const [showTemperatureModal, setShowTemperatureModal] = useState(false);
+  const [showPetModal, setShowPetModal] = useState(false);
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
 
   useEffect(() => {
     // Simulate loading data
@@ -62,6 +66,13 @@ export default function HomeScreen() {
 
     return () => clearInterval(temperatureCheckInterval);
   }, []);
+
+  // Update questions answered from practice session
+  useEffect(() => {
+    if (practiceSession) {
+      setQuestionsAnswered(practiceSession.questionsAnswered || 0);
+    }
+  }, [practiceSession]);
 
   const handleProfilePress = () => {
     router.push("/profile");
@@ -97,6 +108,10 @@ export default function HomeScreen() {
     setShowTemperatureModal(true);
   };
 
+  const handlePetInteract = () => {
+    setShowPetModal(true);
+  };
+
   const handleCoolDown = () => {
     const success = coolDownPenguin();
     if (success) {
@@ -127,7 +142,9 @@ export default function HomeScreen() {
             <View style={styles.profileImage}>
               <Image
                 source={{
-                  uri: user.photoUrl,
+                  uri:
+                    user.photoUrl ||
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback",
                 }}
                 style={styles.avatar}
               />
@@ -160,7 +177,7 @@ export default function HomeScreen() {
         {/* Virtual Pet */}
         <View style={styles.petSection}>
           <VirtualPet
-            onPetInteract={playWithPet}
+            onPetInteract={handlePetInteract}
             temperature={pet.temperature}
           />
         </View>
@@ -175,11 +192,29 @@ export default function HomeScreen() {
           adjustmentCost={50}
         />
 
+        {/* Pet Detail Modal */}
+        <PetDetailModal
+          visible={showPetModal}
+          onClose={() => setShowPetModal(false)}
+          pet={{
+            name: pet.name,
+            health: 85, // Default health value
+            foodLevel: pet.foodLevel,
+            temperature: pet.temperature,
+            mood: pet.mood === "happy" ? 80 : pet.mood === "neutral" ? 50 : 20, // Convert string mood to number
+            age: 14, // Default age value
+          }}
+          onFeed={feedPet}
+          onPlay={playWithPet}
+          snowballs={user.snowballs}
+        />
+
         {/* Chapter Input CTA */}
         <View style={styles.chapterSection}>
           <ChapterInput
             onSave={handleChapterSave}
             initialChapters={studiedChapters}
+            questionsCompleted={questionsAnswered}
           />
         </View>
 
