@@ -15,7 +15,7 @@ const CompletionScreen = () => {
   const { studiedChapters } = useAppContext();
 
   const handleStartPractice = () => {
-    router.push("/practice");
+    router.push("/practice/intro");
   };
 
   const handleGoHome = () => {
