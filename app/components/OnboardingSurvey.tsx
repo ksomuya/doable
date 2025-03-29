@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F9FAFB",
   },
   optionSelected: {
-    borderColor: "#23CD57",
-    backgroundColor: "#ECFDF5",
+    borderColor: "#ED7930",
+    backgroundColor: "#FEF3E8",
   },
   optionText: {
     fontSize: 16,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   optionTextSelected: {
-    color: "#059669",
+    color: "#ED7930",
     fontWeight: "600",
   },
   helperText: {

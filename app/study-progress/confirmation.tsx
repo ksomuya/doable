@@ -217,10 +217,10 @@ const styles = StyleSheet.create({
   confirmButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: "#4F46E5",
+    borderRadius: 12,
+    backgroundColor: "#ED7930",
     flex: 1,
     marginLeft: 12,
     justifyContent: "center",

@@ -18,7 +18,6 @@ import {
   User,
 } from "lucide-react-native";
 import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 const { width } = Dimensions.get("window");
 
@@ -146,10 +145,9 @@ const ProfileSetup = ({ onComplete = () => {} }: ProfileSetupProps) => {
     }
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    const currentDate = selectedDate || profileData.dateOfBirth || new Date();
-    setShowDatePicker(Platform.OS === "ios");
-    handleInputChange("dateOfBirth", currentDate);
+  const handleDateChange = (selectedDate: Date) => {
+    handleInputChange("dateOfBirth", selectedDate);
+    setShowDatePicker(false);
   };
 
   const formatDate = (date: Date | null) => {
@@ -208,15 +206,56 @@ const ProfileSetup = ({ onComplete = () => {} }: ProfileSetupProps) => {
         <Text style={styles.errorText}>{errors.dateOfBirth}</Text>
       ) : null}
 
-      {(showDatePicker || Platform.OS === "android") && (
-        <DateTimePicker
-          testID="dateTimePicker"
-          value={profileData.dateOfBirth || new Date()}
-          mode="date"
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleDateChange}
-          maximumDate={new Date()}
-        />
+      {showDatePicker && (
+        <View style={styles.datePickerContainer}>
+          <View style={styles.datePickerHeader}>
+            <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                handleDateChange(profileData.dateOfBirth || new Date())
+              }
+            >
+              <Text style={styles.doneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.datePickerContent}>
+            {/* Custom date picker UI */}
+            <View style={styles.customDatePicker}>
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => handleDateChange(new Date(2000, 0, 1))}
+              >
+                <Text style={styles.dateOptionText}>Jan 1, 2000</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => handleDateChange(new Date(2001, 0, 1))}
+              >
+                <Text style={styles.dateOptionText}>Jan 1, 2001</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => handleDateChange(new Date(2002, 0, 1))}
+              >
+                <Text style={styles.dateOptionText}>Jan 1, 2002</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => handleDateChange(new Date(2003, 0, 1))}
+              >
+                <Text style={styles.dateOptionText}>Jan 1, 2003</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dateOption}
+                onPress={() => handleDateChange(new Date(2004, 0, 1))}
+              >
+                <Text style={styles.dateOptionText}>Jan 1, 2004</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -447,6 +486,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginRight: 8,
+  },
+  datePickerContainer: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    overflow: "hidden",
+  },
+  datePickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  cancelText: {
+    color: "#6B7280",
+    fontSize: 16,
+  },
+  doneText: {
+    color: "#ED7930",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  datePickerContent: {
+    padding: 12,
+  },
+  customDatePicker: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+  },
+  dateOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  dateOptionText: {
+    fontSize: 16,
+    color: "#374151",
   },
 });
 

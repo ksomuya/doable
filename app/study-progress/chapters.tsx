@@ -396,7 +396,6 @@ const ChaptersScreen = () => {
           <TouchableOpacity
             style={[
               styles.continueButton,
-              { backgroundColor: subjectData.color },
               selectedTopics.length === 0 && styles.disabledButton,
             ]}
             onPress={handleContinue}
@@ -549,12 +548,13 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   continueButton: {
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 8,
+    borderRadius: 12,
     flex: 1,
     marginLeft: 12,
     alignItems: "center",
+    backgroundColor: "#ED7930",
   },
   continueButtonText: {
     fontSize: 16,

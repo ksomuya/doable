@@ -56,11 +56,11 @@ export default function ProfileScreen() {
     // Update would happen here
   };
 
-  const navigateToSettings = (settingType) => {
+  const navigateToSettings = (settingType: string) => {
     router.push(`/settings/${settingType}`);
   };
 
-  const handleSocialLink = (platform) => {
+  const handleSocialLink = (platform: string) => {
     // These would be your actual social media links
     const links = {
       instagram: "https://instagram.com/doableapp",

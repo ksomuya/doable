@@ -243,7 +243,6 @@ const BottomSheetModal = ({
             <TouchableOpacity
               style={[
                 styles.confirmButton,
-                { backgroundColor: subject.color },
                 selectedTopicsCount === 0 && styles.disabledButton,
               ]}
               onPress={onConfirm}
@@ -444,6 +443,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 16,
     borderRadius: 12,
+    backgroundColor: "#ED7930",
   },
   confirmButtonText: {
     fontSize: 16,

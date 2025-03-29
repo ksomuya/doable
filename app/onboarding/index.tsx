@@ -59,7 +59,7 @@ const OnboardingScreen = () => {
 
       {/* Continue Button */}
       <TouchableOpacity
-        className="bg-[#ED7930] w-full py-4 rounded-full items-center justify-center mb-4"
+        className="bg-[#ED7930] w-full py-4 rounded-xl items-center justify-center mb-4"
         onPress={onContinue}
       >
         <Text className="text-white text-xl font-semibold">Continue</Text>

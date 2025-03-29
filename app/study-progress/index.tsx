@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
     marginTop: "auto",
   },
   completeButton: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: "#ED7930",
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
