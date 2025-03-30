@@ -84,6 +84,18 @@ export default function RootLayout() {
               name="practice/summary"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="practice/rewards-chest"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="practice/performance-summary"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="practice/final-choice"
+              options={{ headerShown: false }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

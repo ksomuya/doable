@@ -54,8 +54,8 @@ const SummaryScreen = () => {
   };
 
   const handlePracticeContinue = () => {
-    // Start a new practice session with the same subject
-    router.push("/practice/goal");
+    // Direct users to the final choice screen
+    router.push("/practice/final-choice" as any);
   };
 
   // Get personalized recommendations based on performance

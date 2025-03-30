@@ -180,10 +180,10 @@ const QuestionScreen = () => {
     }
   };
 
-  // Navigate to summary screen
+  // Navigate to rewards chest screen
   const navigateToSummary = () => {
     router.push({
-      pathname: "/practice/summary",
+      pathname: "/practice/rewards-chest",
       params: {
         questionsAnswered: questionsAnswered.toString(),
         correctAnswers: correctAnswers.toString(),
