@@ -19,6 +19,8 @@ import QuestionReportModal from "../components/QuestionReportModal";
 import BookmarkButton from "../components/BookmarkButton";
 import StreakIndicator from "../components/StreakIndicator";
 
+type QuestionDifficulty = "Easy" | "Medium" | "Hard";
+
 const QuestionScreen = () => {
   const { subject, goal, xp, type } = useLocalSearchParams();
   const { user, updatePracticeProgress } = useAppContext();
@@ -37,6 +39,12 @@ const QuestionScreen = () => {
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
 
+  // Reset selected answer when question changes
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setAttemptCount(0);
+  }, [currentQuestionIndex]);
+
   // Mock questions data - in a real app, this would come from an API or database
   const questions = [
     {
@@ -45,7 +53,7 @@ const QuestionScreen = () => {
       totalQuestions: 10,
       questionText:
         "A particle moves in a straight line with constant acceleration. If it covers distances s₁ and s₂ in the first t₁ and t₂ seconds respectively from the beginning of the motion, then its initial velocity is:",
-      difficultyLevel: "Medium",
+      difficultyLevel: "Medium" as QuestionDifficulty,
       timeRemaining: 120,
       subject: "Physics",
       topic: "Kinematics",
@@ -65,7 +73,7 @@ const QuestionScreen = () => {
       totalQuestions: 10,
       questionText:
         "A ball is thrown vertically upward with an initial velocity of 20 m/s. How high will it go before it starts falling back down? (Take g = 10 m/s²)",
-      difficultyLevel: "Easy",
+      difficultyLevel: "Easy" as QuestionDifficulty,
       timeRemaining: 90,
       subject: "Physics",
       topic: "Kinematics",
@@ -85,7 +93,7 @@ const QuestionScreen = () => {
       totalQuestions: 10,
       questionText:
         "Two cars A and B are traveling in the same direction with speeds of 30 m/s and 20 m/s respectively. Car A is 100 m behind car B. How long will it take for car A to catch up with car B?",
-      difficultyLevel: "Medium",
+      difficultyLevel: "Medium" as QuestionDifficulty,
       timeRemaining: 120,
       subject: "Physics",
       topic: "Kinematics",
@@ -106,18 +114,21 @@ const QuestionScreen = () => {
   // Handle answer selection
   const handleAnswerSelected = (optionId: string) => {
     setSelectedAnswer(optionId);
+    
+    // Don't increment attempt count or set questions answered until the answer is checked
+    // These will happen when the feedback modal is shown
+  };
+  
+  // Handle check answer
+  const handleCheckAnswer = (optionId: string, isCorrect: boolean) => {
     setAttemptCount((prev) => prev + 1);
     setQuestionsAnswered((prev) => prev + 1);
-
-    const selectedOption = currentQuestion.options.find(
-      (option) => option.id === optionId,
-    );
-    const isCorrect = selectedOption?.isCorrect || false;
+    
     setIsAnswerCorrect(isCorrect);
-
+    
     // Show feedback modal
     setShowFeedbackModal(true);
-
+    
     // Update XP and streak
     if (isCorrect) {
       // Award more XP for correct answers
@@ -126,7 +137,7 @@ const QuestionScreen = () => {
       setStreak((prev) => prev + 1);
       setShowStreakIndicator(true);
       setCorrectAnswers((prev) => prev + 1);
-
+      
       // Update practice progress in context
       updatePracticeProgress(xpEarned, true, 30); // 30 seconds is a placeholder for time spent
     } else {
@@ -134,11 +145,11 @@ const QuestionScreen = () => {
       const xpEarned = 5;
       setCurrentXP((prev) => Math.min(prev + xpEarned, goalXP));
       setStreak(0); // Reset streak on wrong answer
-
+      
       // Update practice progress in context
       updatePracticeProgress(xpEarned, false, 30);
     }
-
+    
     // Hide streak indicator after a delay
     if (isCorrect) {
       setTimeout(() => {
@@ -158,29 +169,36 @@ const QuestionScreen = () => {
     setShowFeedbackModal(false);
     setSelectedAnswer(null);
     setAttemptCount(0);
+    setIsAnswerCorrect(false); // Reset the answer correctness state too
 
     // Check if we've reached the goal XP
     if (currentXP >= goalXP) {
-      // Navigate to summary screen
-      router.push({
-        pathname: "/practice/summary",
-        params: {
-          questionsAnswered: questionsAnswered.toString(),
-          correctAnswers: correctAnswers.toString(),
-          xpEarned: currentXP.toString(),
-          goalXP: goalXP.toString(),
-        },
-      });
+      navigateToSummary();
     } else {
       // Load next question
       setCurrentQuestionIndex((prev) => (prev + 1) % questions.length);
     }
   };
 
+  // Navigate to summary screen
+  const navigateToSummary = () => {
+    router.push({
+      pathname: "/practice/summary",
+      params: {
+        questionsAnswered: questionsAnswered.toString(),
+        correctAnswers: correctAnswers.toString(),
+        xpEarned: currentXP.toString(),
+        goalXP: goalXP.toString(),
+      },
+    });
+  };
+
   // Handle try again
   const handleTryAgain = () => {
+    // Reset states properly to allow retry
     setShowFeedbackModal(false);
     setSelectedAnswer(null);
+    setAttemptCount(0);
   };
 
   // Handle see answer
@@ -245,6 +263,7 @@ const QuestionScreen = () => {
         <StreakIndicator streak={streak} visible={showStreakIndicator} />
 
         <ScrollView style={styles.content}>
+          <View style={styles.topSpacing} />
           {/* Question display */}
           <QuestionDisplay
             questionNumber={currentQuestionIndex + 1}
@@ -264,6 +283,7 @@ const QuestionScreen = () => {
               showExplanation={false}
               selectedOption={selectedAnswer}
               disabled={showFeedbackModal}
+              onCheckAnswer={handleCheckAnswer}
             />
           </View>
         </ScrollView>
@@ -291,6 +311,14 @@ const QuestionScreen = () => {
           onSubmit={handleReportSubmit}
           questionId={currentQuestion.id}
         />
+        
+        {/* End Practice Button */}
+        <TouchableOpacity
+          style={styles.endPracticeButton}
+          onPress={navigateToSummary}
+        >
+          <Text style={styles.endPracticeButtonText}>End Practice</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -344,6 +372,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  topSpacing: {
+    height: 16,
+  },
   answerContainer: {
     marginTop: 16,
   },
@@ -362,6 +393,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     marginRight: 8,
+  },
+  endPracticeButton: {
+    backgroundColor: "#EF4444",
+    padding: 16,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  endPracticeButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
 

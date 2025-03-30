@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { Check, X } from "lucide-react-native";
 
@@ -10,9 +10,12 @@ type Option = {
 
 type AnswerOptionsProps = {
   options: Option[];
-  onAnswerSelected?: (optionId: string, isCorrect: boolean) => void;
+  onAnswerSelected?: (optionId: string) => void;
+  onCheckAnswer?: (optionId: string, isCorrect: boolean) => void;
   showExplanation?: boolean;
   explanation?: string;
+  selectedOption?: string | null;
+  disabled?: boolean;
 };
 
 const AnswerOptions = ({
@@ -23,25 +26,42 @@ const AnswerOptions = ({
     { id: "D", text: "Zeroth law of thermodynamics", isCorrect: false },
   ],
   onAnswerSelected = () => {},
+  onCheckAnswer,
   showExplanation = false,
   explanation = "The first law of thermodynamics states that energy cannot be created or destroyed in an isolated system. It is a version of the law of conservation of energy.",
+  selectedOption = null,
+  disabled = false,
 }: AnswerOptionsProps) => {
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [localSelectedOption, setLocalSelectedOption] = useState<string | null>(null);
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
+  
+  useEffect(() => {
+    setLocalSelectedOption(selectedOption);
+    if (selectedOption === null) {
+      setIsAnswerChecked(false);
+    }
+  }, [selectedOption]);
 
   const handleOptionSelect = (optionId: string) => {
-    if (!isAnswerChecked) {
-      setSelectedOption(optionId);
+    if (!isAnswerChecked && !disabled) {
+      setLocalSelectedOption(optionId);
+      onAnswerSelected?.(optionId);
     }
   };
 
   const handleCheckAnswer = () => {
-    if (selectedOption) {
+    if (localSelectedOption) {
       const selectedOptionObj = options.find(
-        (option) => option.id === selectedOption,
+        (option) => option.id === localSelectedOption,
       );
       if (selectedOptionObj) {
-        onAnswerSelected(selectedOption, selectedOptionObj.isCorrect);
+        if (onCheckAnswer) {
+          onCheckAnswer(localSelectedOption, selectedOptionObj.isCorrect);
+        } else {
+          console.warn("onCheckAnswer prop is missing - using deprecated behavior");
+          // @ts-ignore - for backward compatibility
+          onAnswerSelected?.(localSelectedOption, selectedOptionObj.isCorrect);
+        }
         setIsAnswerChecked(true);
       }
     }
@@ -51,7 +71,7 @@ const AnswerOptions = ({
     <View className="bg-white p-4 rounded-lg shadow-sm w-full">
       <ScrollView className="mb-4">
         {options.map((option) => {
-          const isSelected = selectedOption === option.id;
+          const isSelected = localSelectedOption === option.id;
           const showResult = isAnswerChecked;
 
           let bgColorClass = "bg-gray-100";
@@ -70,7 +90,7 @@ const AnswerOptions = ({
               key={option.id}
               className={`flex-row items-center p-3 rounded-md mb-2 ${bgColorClass}`}
               onPress={() => handleOptionSelect(option.id)}
-              disabled={isAnswerChecked}
+              disabled={isAnswerChecked || disabled}
             >
               <View className="w-8 h-8 rounded-full bg-white items-center justify-center mr-3 border border-gray-300">
                 <Text className="text-gray-700 font-medium">{option.id}</Text>
@@ -97,9 +117,9 @@ const AnswerOptions = ({
       )}
 
       <TouchableOpacity
-        className={`py-3 rounded-md items-center justify-center ${isAnswerChecked || !selectedOption ? "bg-gray-400" : "bg-blue-500"}`}
+        className={`py-3 rounded-md items-center justify-center ${isAnswerChecked || !localSelectedOption ? "bg-gray-400" : "bg-blue-500"}`}
         onPress={handleCheckAnswer}
-        disabled={isAnswerChecked || !selectedOption}
+        disabled={isAnswerChecked || !localSelectedOption || disabled}
       >
         <Text className="text-white font-medium text-base">
           {isAnswerChecked ? "Answer Checked" : "Check Answer"}

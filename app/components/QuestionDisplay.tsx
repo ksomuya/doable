@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import { Clock, AlertTriangle, HelpCircle } from "lucide-react-native";
 
 interface QuestionDisplayProps {
@@ -42,150 +42,64 @@ const QuestionDisplay = ({
     }
   };
 
+  const difficultyColor = getDifficultyColor(difficultyLevel);
+  const difficultyBgColor = difficultyLevel === "Easy" ? "bg-green-100" : difficultyLevel === "Medium" ? "bg-yellow-100" : "bg-red-100";
+
   return (
-    <View style={styles.container}>
-      {/* Question header with metadata */}
-      <View style={styles.header}>
-        <View style={styles.questionCounter}>
-          <Text style={styles.questionCounterText}>
+    <View className="bg-white p-5 rounded-lg shadow-sm w-full">
+      {/* Question header */}
+      <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-gray-500 font-medium">
             Question {questionNumber}/{totalQuestions}
           </Text>
-        </View>
-
-        <View style={styles.metadataContainer}>
           <View
-            style={[
-              styles.difficultyBadge,
-              { backgroundColor: getDifficultyColor(difficultyLevel) },
-            ]}
+            className={`px-2 py-1 rounded-full ${difficultyColor} ${difficultyBgColor}`}
           >
-            <Text style={styles.difficultyText}>{difficultyLevel}</Text>
+            <Text
+              className={`text-xs font-medium ${difficultyColor}`}
+            >
+              {difficultyLevel}
+            </Text>
           </View>
-
-          <View style={styles.timer}>
-            <Clock size={16} color="#64748b" />
-            <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
-          </View>
+        </View>
+        <View className="flex-row items-center">
+          <Clock size={16} color="#6B7280" />
+          <Text className="text-gray-500 font-medium ml-1">
+            {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60)
+              .toString()
+              .padStart(2, "0")}
+          </Text>
         </View>
       </View>
 
-      {/* Subject and topic info */}
-      <View style={styles.subjectContainer}>
-        <Text style={styles.subjectText}>
+      {/* Question text */}
+      <View className="mb-6 mt-6">
+        <Text className="text-lg font-medium text-gray-800 leading-relaxed mb-6">
+          {questionText}
+        </Text>
+      </View>
+
+      {/* Subject and topic */}
+      <View className="mb-3">
+        <Text className="text-sm text-gray-500 font-medium">
           {subject} • {topic}
         </Text>
       </View>
 
-      {/* Question content */}
-      <View style={styles.questionContainer}>
-        <Text style={styles.questionText}>{questionText}</Text>
-      </View>
-
       {/* Help buttons */}
-      <View style={styles.helpContainer}>
-        <View style={styles.helpButton}>
+      <View className="flex-row justify-end gap-4">
+        <View className="flex-row items-center gap-1">
           <HelpCircle size={20} color="#64748b" />
-          <Text style={styles.helpText}>Hint</Text>
+          <Text className="text-sm text-gray-500">Hint</Text>
         </View>
-        <View style={styles.helpButton}>
+        <View className="flex-row items-center gap-1">
           <AlertTriangle size={20} color="#64748b" />
-          <Text style={styles.helpText}>Report</Text>
+          <Text className="text-sm text-gray-500">Report</Text>
         </View>
       </View>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#ffffff",
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  questionCounter: {
-    backgroundColor: "#f1f5f9",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-  },
-  questionCounterText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#334155",
-  },
-  metadataContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  difficultyText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#1e293b",
-  },
-  timer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#f1f5f9",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  timerText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#64748b",
-  },
-  subjectContainer: {
-    marginBottom: 12,
-  },
-  subjectText: {
-    fontSize: 14,
-    color: "#64748b",
-    fontWeight: "500",
-  },
-  questionContainer: {
-    marginBottom: 16,
-  },
-  questionText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: "#1e293b",
-    fontWeight: "400",
-  },
-  helpContainer: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 16,
-  },
-  helpButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  helpText: {
-    fontSize: 14,
-    color: "#64748b",
-  },
-});
 
 export default QuestionDisplay;
