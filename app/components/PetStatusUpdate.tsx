@@ -24,9 +24,7 @@ const PetStatusUpdate = ({
       {/* Pet Image and Status Title */}
       <View className="items-center mb-4">
         <Image
-          source={{
-            uri: "https://api.dicebear.com/7.x/avataaars/svg?seed=pet123",
-          }}
+          source={require("../../assets/images/penguine.svg")}
           className="w-24 h-24 rounded-full bg-gray-100"
         />
         <Text className="text-xl font-bold mt-2 text-center text-purple-800">

@@ -19,6 +19,7 @@ import {
   Settings,
   Bell,
   ArrowUpRight,
+  Focus,
 } from "lucide-react-native";
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
@@ -97,6 +98,8 @@ export default function HomeScreen() {
       router.push("/customtest");
     } else if (cardType === "Reports") {
       router.push("/reports");
+    } else if (cardType === "Remove Distractions") {
+      router.push("/distraction-blocker");
     }
   };
 
@@ -257,11 +260,12 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Right Column - One Large Box */}
+            {/* Right Column - Two boxes (Reports and Remove Distractions) */}
             <View style={styles.bentoRightColumn}>
+              {/* Reports Card */}
               <TouchableOpacity
                 onPress={() => handleCardPress("Reports")}
-                style={[styles.bentoCard, styles.greenCard, styles.largeCard]}
+                style={[styles.bentoCard, styles.greenCard, styles.mediumCard]}
               >
                 <View style={styles.cardHeader}>
                   <Text style={styles.cardTitle}>Reports</Text>
@@ -271,6 +275,22 @@ export default function HomeScreen() {
                 </View>
                 <View style={styles.cardContent}>
                   <ClipboardList size={28} color="#10b981" />
+                </View>
+              </TouchableOpacity>
+              
+              {/* Remove Distractions Card */}
+              <TouchableOpacity
+                onPress={() => handleCardPress("Remove Distractions")}
+                style={[styles.bentoCard, styles.blueCard, styles.mediumCard]}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Remove Distractions</Text>
+                  <View style={styles.iconContainer}>
+                    <ArrowUpRight size={12} color="#000" />
+                  </View>
+                </View>
+                <View style={styles.cardContent}>
+                  <Focus size={28} color="#3b82f6" />
                 </View>
               </TouchableOpacity>
             </View>
@@ -377,8 +397,15 @@ const styles = StyleSheet.create({
   greenCard: {
     backgroundColor: "#ECFDF5",
   },
+  blueCard: {
+    backgroundColor: "#EFF6FF",
+  },
   largeCard: {
     height: 268,
+  },
+  mediumCard: {
+    height: 128,
+    marginBottom: 12,
   },
   cardHeader: {
     flexDirection: "row",

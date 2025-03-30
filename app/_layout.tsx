@@ -104,6 +104,18 @@ export default function RootLayout() {
               name="practice/notification-permission"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="distraction-blocker/index"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="distraction-blocker/setup"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="distraction-blocker/app-selection"
+              options={{ headerShown: false }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

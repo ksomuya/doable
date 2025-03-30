@@ -93,9 +93,7 @@ const PetDetailModal = ({
           <View style={styles.petInfoContainer}>
             <View style={styles.petImageContainer}>
               <Image
-                source={{
-                  uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin",
-                }}
+                source={require("../../assets/images/penguine.svg")}
                 style={styles.petImage}
                 contentFit="contain"
                 onError={() => console.log("Failed to load pet image")}

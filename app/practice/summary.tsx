@@ -84,9 +84,7 @@ const SummaryScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.confettiContainer}>
         <Image
-          source={{
-            uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin&backgroundColor=orange",
-          }}
+          source={require("../../assets/images/penguine.svg")}
           style={styles.characterImage}
           contentFit="contain"
         />
@@ -171,9 +169,7 @@ const SummaryScreen = () => {
             <View style={styles.petStatusContainer}>
               <View style={styles.petImageContainer}>
                 <Image
-                  source={{
-                    uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin",
-                  }}
+                  source={require("../../assets/images/penguine.svg")}
                   style={styles.petImage}
                   contentFit="contain"
                 />

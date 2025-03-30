@@ -6,12 +6,15 @@ import {
   StatusBar,
   TouchableOpacity,
 } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import OnboardingSurvey from "../components/OnboardingSurvey";
 import { useAppContext } from "../context/AppContext";
 import { SurveyData } from "../components/OnboardingSurvey";
 import PaywallScreen from "./paywall";
+import PenguinImage from "../components/PenguinImage";
+
+// Remove the direct import since we now have a component
+// const penguineImage = require("../../assets/images/penguine.svg");
 
 const OnboardingScreen = () => {
   const router = useRouter();
@@ -53,15 +56,9 @@ const OnboardingScreen = () => {
           <Text className="text-center text-xl font-medium">{message}</Text>
         </View>
 
-        {/* Penguin Image */}
+        {/* Penguin Image - using our new component */}
         <View className="w-60 h-60 items-center justify-center">
-          <Image
-            source={{
-              uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin&backgroundColor=orange",
-            }}
-            style={{ width: 240, height: 240 }}
-            contentFit="contain"
-          />
+          <PenguinImage size={240} />
         </View>
       </View>
 

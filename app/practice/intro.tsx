@@ -34,9 +34,7 @@ const PracticeIntroScreen = () => {
         {/* Penguin Image */}
         <View style={styles.imageContainer}>
           <Image
-            source={{
-              uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin&backgroundColor=orange",
-            }}
+            source={require("../../assets/images/penguine.svg")}
             style={styles.image}
             contentFit="contain"
           />

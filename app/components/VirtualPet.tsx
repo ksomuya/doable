@@ -71,9 +71,7 @@ const VirtualPet = ({
 
         <View style={styles.pet}>
           <RNImage
-            source={{
-              uri: "https://api.dicebear.com/7.x/bottts/svg?seed=penguin&backgroundColor=orange",
-            }}
+            source={require("../../assets/images/penguine.svg")}
             style={styles.penguinImage}
             onError={() => console.log("Failed to load penguin image")}
           />
