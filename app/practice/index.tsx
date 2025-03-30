@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, BookOpen, Clock, Award, Zap } from "lucide-react-native";
+import { useAppContext } from "../context/AppContext";
 
 type Subject = {
   id: string;
@@ -31,8 +32,10 @@ const subjects: Subject[] = [
   },
 ];
 
-export default function PracticePage() {
+const PracticeHomeScreen = () => {
   const router = useRouter();
+  const { isFirstPracticeSession } = useAppContext();
+  
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -116,7 +119,9 @@ export default function PracticePage() {
       </View>
     </SafeAreaView>
   );
-}
+};
+
+export default PracticeHomeScreen;
 
 const styles = StyleSheet.create({
   safeArea: {

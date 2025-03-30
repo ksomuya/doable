@@ -96,6 +96,14 @@ export default function RootLayout() {
               name="practice/final-choice"
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="practice/streak-setup"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="practice/notification-permission"
+              options={{ headerShown: false }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

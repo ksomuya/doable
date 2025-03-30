@@ -25,6 +25,8 @@ type UserData = {
   xp: number;
   level: number;
   streak: number;
+  streakGoal: number;
+  notificationsEnabled: boolean;
   rank: number;
   dateOfBirth: Date | null;
   parentMobile: string;
@@ -67,6 +69,10 @@ type AppContextType = {
     dateOfBirth: Date | null,
     parentMobile: string,
   ) => void;
+  // Streak actions
+  updateStreakGoal: (days: number) => void;
+  updateNotificationPreference: (enabled: boolean) => void;
+  isFirstPracticeSession: () => boolean;
   // Pet actions
   feedPet: () => void;
   playWithPet: () => void;
@@ -102,6 +108,8 @@ const defaultUser: UserData = {
   xp: 0,
   level: 1,
   streak: 0,
+  streakGoal: 0,
+  notificationsEnabled: false,
   rank: 5000,
   dateOfBirth: null,
   parentMobile: "",
@@ -241,6 +249,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       parentMobile,
     });
     // Router navigation is handled in the component
+  };
+
+  // Streak actions
+  const updateStreakGoal = (days: number) => {
+    setUser({
+      ...user,
+      streakGoal: days
+    });
+  };
+  
+  const updateNotificationPreference = (enabled: boolean) => {
+    setUser({
+      ...user,
+      notificationsEnabled: enabled
+    });
+  };
+  
+  const isFirstPracticeSession = () => {
+    return user.streakGoal === 0;
   };
 
   // Pet actions
@@ -391,6 +418,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     signOut,
     completeSurvey,
     completeProfileSetup,
+    updateStreakGoal,
+    updateNotificationPreference,
+    isFirstPracticeSession,
     feedPet,
     playWithPet,
     updatePetMood,

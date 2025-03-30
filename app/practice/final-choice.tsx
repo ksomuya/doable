@@ -9,6 +9,7 @@ import {
 import { useRouter } from "expo-router";
 import { Home, BookOpen, ChevronRight } from "lucide-react-native";
 import { Image } from "expo-image";
+import { useAppContext } from "../context/AppContext";
 
 const FinalChoiceScreen = () => {
   const router = useRouter();
@@ -26,7 +27,7 @@ const FinalChoiceScreen = () => {
       <View style={styles.content}>
         <Image
           source={{
-            uri: "https://api.dicebear.com/7.x/bottts/svg?seed=congrats&backgroundColor=blue",
+            uri: "https://cdn.jsdelivr.net/gh/duolingo/images@master/owl-trophy.png",
           }}
           style={styles.image}
           contentFit="contain"
@@ -43,7 +44,7 @@ const FinalChoiceScreen = () => {
             onPress={handleStartNewSession}
           >
             <View style={styles.optionIconContainer}>
-              <BookOpen size={24} color="#4F46E5" />
+              <BookOpen size={24} color="#58CC02" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Start a New Practice Session</Text>
@@ -59,7 +60,7 @@ const FinalChoiceScreen = () => {
             onPress={handleGoHome}
           >
             <View style={styles.optionIconContainer}>
-              <Home size={24} color="#4F46E5" />
+              <Home size={24} color="#58CC02" />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Go to Home Page</Text>
@@ -78,7 +79,7 @@ const FinalChoiceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#FFFFFF",
   },
   content: {
     flex: 1,
@@ -92,15 +93,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "700",
-    color: "#1F2937",
+    color: "#4B4B4B",
     textAlign: "center",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: "#6B7280",
+    color: "#4B4B4B",
     textAlign: "center",
     marginBottom: 40,
     paddingHorizontal: 20,
@@ -111,21 +112,16 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: "#F7F7F7",
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   optionIconContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: "#E5F8D9",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 16,
@@ -136,7 +132,7 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1F2937",
+    color: "#4B4B4B",
     marginBottom: 4,
   },
   optionDescription: {

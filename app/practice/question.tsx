@@ -23,7 +23,7 @@ type QuestionDifficulty = "Easy" | "Medium" | "Hard";
 
 const QuestionScreen = () => {
   const { subject, goal, xp, type } = useLocalSearchParams();
-  const { user, updatePracticeProgress } = useAppContext();
+  const { user, updatePracticeProgress, isFirstPracticeSession } = useAppContext();
 
   const [currentXP, setCurrentXP] = useState(0);
   const [goalXP, setGoalXP] = useState(parseInt(xp as string) || 200);
@@ -182,15 +182,29 @@ const QuestionScreen = () => {
 
   // Navigate to rewards chest screen
   const navigateToSummary = () => {
-    router.push({
-      pathname: "/practice/rewards-chest",
-      params: {
-        questionsAnswered: questionsAnswered.toString(),
-        correctAnswers: correctAnswers.toString(),
-        xpEarned: currentXP.toString(),
-        goalXP: goalXP.toString(),
-      },
-    });
+    // For first-time users, go to streak setup
+    if (isFirstPracticeSession()) {
+      router.push({
+        pathname: "/practice/streak-setup" as any,
+        params: {
+          questionsAnswered: questionsAnswered.toString(),
+          correctAnswers: correctAnswers.toString(),
+          xpEarned: currentXP.toString(),
+          goalXP: goalXP.toString(),
+        },
+      });
+    } else {
+      // For returning users, go to rewards chest
+      router.push({
+        pathname: "/practice/rewards-chest" as any,
+        params: {
+          questionsAnswered: questionsAnswered.toString(),
+          correctAnswers: correctAnswers.toString(),
+          xpEarned: currentXP.toString(),
+          goalXP: goalXP.toString(),
+        },
+      });
+    }
   };
 
   // Handle try again

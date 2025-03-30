@@ -9,9 +9,11 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronRight, Clock, Award, Target, CheckCircle, XCircle, Timer } from "lucide-react-native";
+import { useAppContext } from "../context/AppContext";
 
 const PerformanceSummaryScreen = () => {
   const router = useRouter();
+  const { isFirstPracticeSession } = useAppContext();
   const { 
     questionsAnswered, 
     correctAnswers, 
@@ -32,7 +34,13 @@ const PerformanceSummaryScreen = () => {
   const timeTaken = `${timeSpentMinutes} minutes`;
   
   const handleContinue = () => {
-    router.push("/practice/final-choice" as any);
+    if (isFirstPracticeSession()) {
+      // First time users go to streak setup
+      router.push("/practice/streak-setup" as any);
+    } else {
+      // Returning users go to final choice
+      router.push("/practice/final-choice" as any);
+    }
   };
   
   return (
