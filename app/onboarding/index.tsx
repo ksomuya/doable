@@ -11,21 +11,29 @@ import { useRouter } from "expo-router";
 import OnboardingSurvey from "../components/OnboardingSurvey";
 import { useAppContext } from "../context/AppContext";
 import { SurveyData } from "../components/OnboardingSurvey";
+import PaywallScreen from "./paywall";
 
 const OnboardingScreen = () => {
   const router = useRouter();
   const { completeSurvey } = useAppContext();
   const [currentStep, setCurrentStep] = useState(1); // Start with first intro screen
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const handleSurveyComplete = (data: SurveyData) => {
     // Save the survey data to local state first
     setSurveyData(data);
-    // Move to the next screen
-    setCurrentStep(4);
+    
+    // Show paywall instead of going to next screen
+    setShowPaywall(true);
   };
 
   const handleFinalContinue = () => {
+    // Navigate to study progress flow
+    setCurrentStep(7);
+  };
+
+  const handlePaywallComplete = () => {
     // Save the survey data to context
     if (surveyData) {
       completeSurvey(surveyData);
@@ -68,6 +76,11 @@ const OnboardingScreen = () => {
   );
 
   const renderContent = () => {
+    // If showPaywall is true, show the paywall screen
+    if (showPaywall) {
+      return <PaywallScreen onComplete={handlePaywallComplete} />;
+    }
+
     switch (currentStep) {
       case 1: // First intro screen
         return renderPenguinIntroScreen("Hi there! i am dodo", () =>
@@ -98,6 +111,8 @@ const OnboardingScreen = () => {
           "Tell us which chapters you've studied in your class so we can create the best practice session for you!",
           handleFinalContinue,
         );
+      case 7: // Paywall screen - this is now just a fallback
+        return <PaywallScreen onComplete={handlePaywallComplete} />;
       default:
         return null;
     }
