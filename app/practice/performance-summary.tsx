@@ -6,10 +6,44 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  ViewStyle,
+  TextStyle,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronRight, Clock, Award, Target, CheckCircle, XCircle, Timer } from "lucide-react-native";
 import { useAppContext } from "../context/AppContext";
+import { spacing, typography, colors, buttonStyles, layoutStyles, cardStyles, getShadow } from "../styles/designSystem";
+
+interface CustomStyles {
+  header: ViewStyle;
+  headerTitle: TextStyle;
+  headerSubtitle: TextStyle;
+  content: ViewStyle;
+  card: ViewStyle;
+  cardTitle: TextStyle;
+  performanceContainer: ViewStyle;
+  accuracyCircle: ViewStyle;
+  accuracyText: TextStyle;
+  accuracyLabel: TextStyle;
+  statsColumn: ViewStyle;
+  statItem: ViewStyle;
+  statIcon: ViewStyle;
+  statLabel: TextStyle;
+  statValue: TextStyle;
+  questionSummaryItem: ViewStyle;
+  questionSummaryIconContainer: ViewStyle;
+  questionSummaryContent: ViewStyle;
+  questionSummaryTitle: TextStyle;
+  questionSummaryValue: TextStyle;
+  rewardsGrid: ViewStyle;
+  rewardItem: ViewStyle;
+  rewardIcon: ViewStyle;
+  rewardIconText: TextStyle;
+  rewardLabel: TextStyle;
+  rewardValue: TextStyle;
+  continueButton: ViewStyle;
+  continueButtonText: TextStyle;
+}
 
 const PerformanceSummaryScreen = () => {
   const router = useRouter();
@@ -44,7 +78,7 @@ const PerformanceSummaryScreen = () => {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={layoutStyles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Session Summary</Text>
         <Text style={styles.headerSubtitle}>
@@ -65,19 +99,19 @@ const PerformanceSummaryScreen = () => {
             
             <View style={styles.statsColumn}>
               <View style={styles.statItem}>
-                <CheckCircle size={20} color="#10B981" style={styles.statIcon} />
+                <CheckCircle size={20} color={colors.success} style={styles.statIcon} />
                 <Text style={styles.statLabel}>Correct</Text>
                 <Text style={styles.statValue}>{correct}</Text>
               </View>
               
               <View style={styles.statItem}>
-                <XCircle size={20} color="#EF4444" style={styles.statIcon} />
+                <XCircle size={20} color={colors.error} style={styles.statIcon} />
                 <Text style={styles.statLabel}>Incorrect</Text>
                 <Text style={styles.statValue}>{incorrect}</Text>
               </View>
               
               <View style={styles.statItem}>
-                <Timer size={20} color="#6366F1" style={styles.statIcon} />
+                <Timer size={20} color={colors.info} style={styles.statIcon} />
                 <Text style={styles.statLabel}>Time</Text>
                 <Text style={styles.statValue}>{timeTaken}</Text>
               </View>
@@ -91,7 +125,7 @@ const PerformanceSummaryScreen = () => {
           
           <View style={styles.questionSummaryItem}>
             <View style={styles.questionSummaryIconContainer}>
-              <Target size={20} color="#4F46E5" />
+              <Target size={20} color={colors.secondary} />
             </View>
             <View style={styles.questionSummaryContent}>
               <Text style={styles.questionSummaryTitle}>Total Questions</Text>
@@ -101,7 +135,7 @@ const PerformanceSummaryScreen = () => {
           
           <View style={styles.questionSummaryItem}>
             <View style={styles.questionSummaryIconContainer}>
-              <Clock size={20} color="#4F46E5" />
+              <Clock size={20} color={colors.secondary} />
             </View>
             <View style={styles.questionSummaryContent}>
               <Text style={styles.questionSummaryTitle}>Average Time per Question</Text>
@@ -145,7 +179,7 @@ const PerformanceSummaryScreen = () => {
               <Text style={styles.rewardLabel}>Badge</Text>
               <Text style={[
                 styles.rewardValue,
-                hasBadge !== "true" && { color: "#9CA3AF" }
+                hasBadge !== "true" && { color: colors.textLight }
               ]}>
                 {hasBadge === "true" ? "1" : "0"}
               </Text>
@@ -154,55 +188,47 @@ const PerformanceSummaryScreen = () => {
         </View>
       </ScrollView>
       
-      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-        <Text style={styles.continueButtonText}>Continue</Text>
+      <TouchableOpacity style={[buttonStyles.secondary, { margin: spacing.md }]} onPress={handleContinue}>
+        <Text style={buttonStyles.text}>Continue</Text>
         <ChevronRight size={20} color="white" />
       </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
+const styles = StyleSheet.create<CustomStyles>({
   header: {
-    padding: 20,
-    backgroundColor: "white",
+    padding: spacing.md,
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: colors.borderLight,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 4,
+    fontSize: typography.title.fontSize,
+    fontWeight: typography.title.fontWeight,
+    color: colors.textDark,
+    marginBottom: spacing.xs,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: "#6B7280",
+    fontSize: typography.body.fontSize,
+    color: colors.textLight,
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: spacing.md,
   },
   card: {
-    backgroundColor: "white",
+    backgroundColor: colors.background,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...getShadow(1),
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 16,
+    fontSize: typography.subtitle.fontSize,
+    fontWeight: typography.subtitle.fontWeight,
+    color: colors.textDark,
+    marginBottom: spacing.md,
   },
   performanceContainer: {
     flexDirection: "row",
@@ -215,16 +241,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEF2FF",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: spacing.md,
   },
   accuracyText: {
     fontSize: 28,
     fontWeight: "700",
-    color: "#4F46E5",
+    color: colors.secondary,
   },
   accuracyLabel: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: typography.caption.fontSize,
+    color: colors.textLight,
   },
   statsColumn: {
     flex: 1,
@@ -232,25 +258,25 @@ const styles = StyleSheet.create({
   statItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   statIcon: {
-    marginRight: 8,
+    marginRight: spacing.sm,
   },
   statLabel: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: typography.caption.fontSize,
+    color: colors.textLight,
     flex: 1,
   },
   statValue: {
-    fontSize: 16,
+    fontSize: typography.body.fontSize,
     fontWeight: "600",
-    color: "#1F2937",
+    color: colors.textDark,
   },
   questionSummaryItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   questionSummaryIconContainer: {
     width: 40,
@@ -259,20 +285,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#EEF2FF",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   questionSummaryContent: {
     flex: 1,
   },
   questionSummaryTitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 2,
+    fontSize: typography.caption.fontSize,
+    color: colors.textLight,
+    marginBottom: spacing.xs,
   },
   questionSummaryValue: {
-    fontSize: 16,
+    fontSize: typography.body.fontSize,
     fontWeight: "600",
-    color: "#1F2937",
+    color: colors.textDark,
   },
   rewardsGrid: {
     flexDirection: "row",
@@ -288,35 +314,35 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   rewardIconText: {
     fontSize: 24,
   },
   rewardLabel: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 2,
+    fontSize: typography.caption.fontSize,
+    color: colors.textLight,
+    marginBottom: spacing.xs,
   },
   rewardValue: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1F2937",
+    color: colors.textDark,
   },
   continueButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#4F46E5",
-    padding: 16,
+    backgroundColor: colors.secondary,
+    padding: spacing.md,
     borderRadius: 12,
-    margin: 16,
+    margin: spacing.md,
   },
   continueButtonText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-    marginRight: 8,
+    fontSize: typography.button.fontSize,
+    fontWeight: typography.button.fontWeight,
+    marginRight: spacing.sm,
   },
 });
 

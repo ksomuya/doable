@@ -5,11 +5,28 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  ViewStyle,
+  TextStyle,
+  ImageStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Home, BookOpen, ChevronRight } from "lucide-react-native";
 import { Image } from "expo-image";
 import { useAppContext } from "../context/AppContext";
+import { spacing, typography, colors, buttonStyles, layoutStyles, cardStyles, getShadow } from "../styles/designSystem";
+
+interface CustomStyles {
+  content: ViewStyle;
+  image: ImageStyle;
+  title: TextStyle;
+  subtitle: TextStyle; 
+  optionsContainer: ViewStyle;
+  optionCard: ViewStyle;
+  optionIconContainer: ViewStyle;
+  optionContent: ViewStyle;
+  optionTitle: TextStyle;
+  optionDescription: TextStyle;
+}
 
 const FinalChoiceScreen = () => {
   const router = useRouter();
@@ -23,7 +40,7 @@ const FinalChoiceScreen = () => {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={layoutStyles.safeArea}>
       <View style={styles.content}>
         <Image
           source={{
@@ -44,7 +61,7 @@ const FinalChoiceScreen = () => {
             onPress={handleStartNewSession}
           >
             <View style={styles.optionIconContainer}>
-              <BookOpen size={24} color="#58CC02" />
+              <BookOpen size={24} color={colors.primary} />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Start a New Practice Session</Text>
@@ -52,7 +69,7 @@ const FinalChoiceScreen = () => {
                 Choose a new subject and continue improving your skills
               </Text>
             </View>
-            <ChevronRight size={20} color="#6B7280" />
+            <ChevronRight size={20} color={colors.textLight} />
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -60,7 +77,7 @@ const FinalChoiceScreen = () => {
             onPress={handleGoHome}
           >
             <View style={styles.optionIconContainer}>
-              <Home size={24} color="#58CC02" />
+              <Home size={24} color={colors.primary} />
             </View>
             <View style={styles.optionContent}>
               <Text style={styles.optionTitle}>Go to Home Page</Text>
@@ -68,7 +85,7 @@ const FinalChoiceScreen = () => {
                 Return to the main dashboard and explore other activities
               </Text>
             </View>
-            <ChevronRight size={20} color="#6B7280" />
+            <ChevronRight size={20} color={colors.textLight} />
           </TouchableOpacity>
         </View>
       </View>
@@ -76,35 +93,32 @@ const FinalChoiceScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
+const styles = StyleSheet.create<CustomStyles>({
   content: {
     flex: 1,
-    padding: 20,
+    padding: spacing.md,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: colors.background,
   },
   image: {
     width: 150,
     height: 150,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#4B4B4B",
+    fontSize: typography.title.fontSize,
+    fontWeight: typography.title.fontWeight,
+    color: colors.textDark,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#4B4B4B",
+    fontSize: typography.body.fontSize,
+    color: colors.textMedium,
     textAlign: "center",
-    marginBottom: 40,
-    paddingHorizontal: 20,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.md,
   },
   optionsContainer: {
     width: "100%",
@@ -112,10 +126,11 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F7F7F7",
-    padding: 16,
+    backgroundColor: colors.backgroundTertiary,
+    padding: spacing.md,
     borderRadius: 12,
-    marginBottom: 16,
+    marginBottom: spacing.md,
+    ...getShadow(1),
   },
   optionIconContainer: {
     width: 50,
@@ -124,20 +139,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5F8D9",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
+    marginRight: spacing.md,
   },
   optionContent: {
     flex: 1,
   },
   optionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#4B4B4B",
-    marginBottom: 4,
+    fontSize: typography.bodyBold.fontSize,
+    fontWeight: typography.bodyBold.fontWeight,
+    color: colors.textDark,
+    marginBottom: spacing.xs,
   },
   optionDescription: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: typography.caption.fontSize,
+    color: colors.textLight,
   },
 });
 

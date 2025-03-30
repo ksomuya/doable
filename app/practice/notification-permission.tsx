@@ -6,12 +6,37 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Platform,
+  TextStyle,
+  ViewStyle,
+  ImageStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronRight, Bell, CheckCircle } from "lucide-react-native";
 import { Image } from "expo-image";
 import * as Notifications from "expo-notifications";
 import { useAppContext } from "../context/AppContext";
+import { spacing, typography, colors, buttonStyles, layoutStyles } from "../styles/designSystem";
+
+interface CustomStyles {
+  successContent: ViewStyle;
+  successIconContainer: ViewStyle;
+  successTitle: TextStyle;
+  successMessage: TextStyle;
+  notificationImage: ImageStyle;
+  title: TextStyle;
+  subtitle: TextStyle;
+  benefitsContainer: ViewStyle;
+  benefitItem: ViewStyle;
+  benefitIcon: ViewStyle;
+  benefitContent: ViewStyle;
+  benefitTitle: TextStyle;
+  benefitDescription: TextStyle;
+  buttonContainer: ViewStyle;
+  allowButton: ViewStyle;
+  disabledButton: ViewStyle;
+  allowButtonText: TextStyle;
+  buttonIcon: ViewStyle;
+}
 
 const NotificationPermissionScreen = () => {
   const router = useRouter();
@@ -55,10 +80,10 @@ const NotificationPermissionScreen = () => {
   // If permission is granted, show success screen
   if (permissionGranted) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={layoutStyles.safeArea}>
         <View style={styles.successContent}>
           <View style={styles.successIconContainer}>
-            <CheckCircle size={60} color="#58CC02" />
+            <CheckCircle size={60} color={colors.primary} />
           </View>
           <Text style={styles.successTitle}>Notifications Enabled!</Text>
           <Text style={styles.successMessage}>
@@ -70,8 +95,8 @@ const NotificationPermissionScreen = () => {
   }
   
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView style={layoutStyles.safeArea}>
+      <View style={layoutStyles.content}>
         <Image
           source={{
             uri: "https://cdn.jsdelivr.net/gh/duolingo/images@master/owl-workout.png",
@@ -87,7 +112,7 @@ const NotificationPermissionScreen = () => {
         <View style={styles.benefitsContainer}>
           <View style={styles.benefitItem}>
             <View style={styles.benefitIcon}>
-              <Bell size={20} color="#58CC02" />
+              <Bell size={20} color={colors.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>Daily Reminders</Text>
@@ -97,7 +122,7 @@ const NotificationPermissionScreen = () => {
           
           <View style={styles.benefitItem}>
             <View style={styles.benefitIcon}>
-              <Bell size={20} color="#58CC02" />
+              <Bell size={20} color={colors.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>Streak Protection</Text>
@@ -107,7 +132,7 @@ const NotificationPermissionScreen = () => {
           
           <View style={styles.benefitItem}>
             <View style={styles.benefitIcon}>
-              <Bell size={20} color="#58CC02" />
+              <Bell size={20} color={colors.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>Achievement Celebrations</Text>
@@ -119,11 +144,15 @@ const NotificationPermissionScreen = () => {
       
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
-          style={[styles.allowButton, isLoading && styles.disabledButton]} 
+          style={[
+            buttonStyles.primary,
+            isLoading && buttonStyles.disabled,
+            { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }
+          ]} 
           onPress={requestNotificationPermission}
           disabled={isLoading}
         >
-          <Text style={styles.allowButtonText}>
+          <Text style={buttonStyles.text}>
             {isLoading ? "Requesting..." : "TURN ON NOTIFICATIONS"}
           </Text>
           {!isLoading && <ChevronRight size={20} color="white" style={styles.buttonIcon} />}
@@ -133,47 +162,63 @@ const NotificationPermissionScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
+const styles = StyleSheet.create<CustomStyles>({
+  successContent: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  content: {
-    flex: 1,
-    padding: 20,
     alignItems: "center",
     justifyContent: "center",
+    padding: spacing.md,
+  },
+  successIconContainer: {
+    backgroundColor: "#E5F8D9",
+    padding: spacing.md,
+    borderRadius: 50,
+    marginBottom: spacing.md,
+  },
+  successTitle: {
+    fontSize: typography.title.fontSize,
+    fontWeight: typography.title.fontWeight,
+    color: colors.textDark,
+    textAlign: "center",
+    marginBottom: spacing.md,
+  },
+  successMessage: {
+    fontSize: typography.body.fontSize,
+    color: colors.textMedium,
+    textAlign: "center",
+    paddingHorizontal: spacing.md,
   },
   notificationImage: {
     width: 140,
     height: 140,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
+    alignSelf: "center",
   },
   title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#4B4B4B",
+    fontSize: typography.title.fontSize,
+    fontWeight: typography.title.fontWeight,
+    color: colors.textDark,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#4B4B4B",
+    fontSize: typography.body.fontSize,
+    color: colors.textMedium,
     textAlign: "center",
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.md,
   },
   benefitsContainer: {
     width: "100%",
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   benefitItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F7F7F7",
-    padding: 16,
+    backgroundColor: colors.backgroundTertiary,
+    padding: spacing.md,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   benefitIcon: {
     width: 40,
@@ -182,65 +227,42 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5F8D9",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: spacing.md,
   },
   benefitContent: {
     flex: 1,
   },
   benefitTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#4B4B4B",
-    marginBottom: 2,
+    fontSize: typography.bodyBold.fontSize,
+    fontWeight: typography.bodyBold.fontWeight,
+    color: colors.textDark,
+    marginBottom: spacing.xs,
   },
   benefitDescription: {
-    fontSize: 14,
-    color: "#6B7280",
+    fontSize: typography.caption.fontSize,
+    color: colors.textLight,
   },
   buttonContainer: {
-    padding: 16,
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
   },
   allowButton: {
-    backgroundColor: "#58CC02",
-    padding: 16,
+    backgroundColor: colors.primary,
+    padding: spacing.md,
     borderRadius: 12,
     alignItems: "center",
   },
   disabledButton: {
-    backgroundColor: "#CCCCCC",
+    backgroundColor: colors.disabled,
   },
   allowButtonText: {
     color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  successContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  successIconContainer: {
-    backgroundColor: "#E5F8D9",
-    padding: 20,
-    borderRadius: 50,
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#4B4B4B",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  successMessage: {
-    fontSize: 16,
-    color: "#4B4B4B",
-    textAlign: "center",
-    paddingHorizontal: 20,
+    fontSize: typography.button.fontSize,
+    fontWeight: typography.button.fontWeight,
   },
   buttonIcon: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
 });
 

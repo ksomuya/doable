@@ -5,11 +5,32 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  Image,
+  StyleProp,
+  TextStyle,
+  ViewStyle,
+  ImageStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ChevronRight, Check } from "lucide-react-native";
+import { Image } from "expo-image";
 import { useAppContext } from "../context/AppContext";
+import { spacing, typography, colors, buttonStyles, layoutStyles } from "../styles/designSystem";
+
+interface CustomStyles {
+  title: TextStyle;
+  goalsContainer: ViewStyle;
+  goalOption: ViewStyle;
+  selectedGoal: ViewStyle;
+  goalOptionText: TextStyle;
+  goalRating: TextStyle;
+  selectedGoalRating: TextStyle;
+  checkContainer: ViewStyle;
+  mascotContainer: ViewStyle;
+  mascotImage: ImageStyle;
+  speechBubble: ViewStyle;
+  speechText: TextStyle;
+  highlightText: TextStyle;
+}
 
 const StreakSetupScreen = () => {
   const router = useRouter();
@@ -38,8 +59,8 @@ const StreakSetupScreen = () => {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <SafeAreaView style={layoutStyles.safeArea}>
+      <View style={layoutStyles.content}>
         <Text style={styles.title}>Pick your streak goal!</Text>
         
         <View style={styles.goalsContainer}>
@@ -61,7 +82,7 @@ const StreakSetupScreen = () => {
               </Text>
               {selectedGoal === option.days && (
                 <View style={styles.checkContainer}>
-                  <Check size={20} color="#FF9500" />
+                  <Check size={20} color={colors.accent} />
                 </View>
               )}
             </TouchableOpacity>
@@ -83,114 +104,92 @@ const StreakSetupScreen = () => {
         </View>
       </View>
       
-      <TouchableOpacity 
-        style={[
-          styles.commitButton,
-          !selectedGoal && styles.disabledButton
-        ]}
-        onPress={handleContinue}
-        disabled={!selectedGoal}
-      >
-        <Text style={styles.commitButtonText}>COMMIT TO MY GOAL</Text>
-      </TouchableOpacity>
+      <View style={layoutStyles.footer}>
+        <TouchableOpacity 
+          style={[
+            buttonStyles.primary,
+            !selectedGoal && buttonStyles.disabled
+          ]}
+          onPress={handleContinue}
+          disabled={!selectedGoal}
+        >
+          <Text style={buttonStyles.text}>COMMIT TO MY GOAL</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    alignItems: "center",
-  },
+const styles = StyleSheet.create<CustomStyles>({
   title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#4B4B4B",
+    fontSize: typography.largeTitle.fontSize,
+    fontWeight: typography.largeTitle.fontWeight,
+    color: typography.largeTitle.color,
     textAlign: "center",
-    marginBottom: 20,
-    marginTop: 20,
+    marginBottom: spacing.md,
+    marginTop: spacing.lg,
   },
   goalsContainer: {
     width: "100%",
-    marginBottom: 40,
+    marginBottom: spacing.xl,
   },
   goalOption: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.background,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 8,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: colors.border,
   },
   selectedGoal: {
     backgroundColor: "#FFF5E5",
-    borderColor: "#FF9500",
+    borderColor: colors.accent,
   },
   goalOptionText: {
-    fontSize: 17,
+    fontSize: typography.body.fontSize,
     fontWeight: "500",
-    color: "#4B4B4B",
+    color: typography.body.color,
   },
   goalRating: {
-    fontSize: 17,
+    fontSize: typography.body.fontSize,
     fontWeight: "500",
-    color: "#909090",
+    color: colors.textLight,
   },
   selectedGoalRating: {
-    color: "#FF9500",
+    color: colors.accent,
   },
   checkContainer: {
     position: "absolute",
-    right: 16,
+    right: spacing.md,
   },
   mascotContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   mascotImage: {
     width: 100,
     height: 100,
   },
   speechBubble: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.background,
     borderRadius: 16,
-    padding: 16,
-    marginLeft: -20,
+    padding: spacing.md,
+    marginLeft: -spacing.lg - 4,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: colors.border,
     maxWidth: 220,
   },
   speechText: {
-    fontSize: 16,
-    color: "#4B4B4B",
+    fontSize: typography.body.fontSize,
+    color: typography.body.color,
   },
   highlightText: {
-    color: "#FF9500",
+    color: colors.accent,
     fontWeight: "bold",
-  },
-  commitButton: {
-    backgroundColor: "#58CC02",
-    padding: 16,
-    borderRadius: 12,
-    margin: 16,
-    alignItems: "center",
-  },
-  disabledButton: {
-    backgroundColor: "#CCCCCC",
-  },
-  commitButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
   },
 });
 
