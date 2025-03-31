@@ -44,7 +44,9 @@ const PracticeIntroScreen = () => {
           We'll help you practice the topics you've selected. Let's strengthen
           your knowledge together!
         </Text>
-
+      </View>
+      
+      <View style={styles.bottomContainer}>
         <TouchableOpacity
           style={styles.continueButton}
           onPress={handleContinue}
@@ -114,9 +116,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#4B5563",
     textAlign: "center",
-    marginBottom: 40,
+    marginBottom: 20,
     lineHeight: 24,
     maxWidth: "90%",
+  },
+  bottomContainer: {
+    padding: 24,
+    paddingBottom: 34, // Extra padding at bottom for safe area
+    width: "100%",
   },
   continueButton: {
     flexDirection: "row",

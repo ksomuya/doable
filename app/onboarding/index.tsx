@@ -49,8 +49,8 @@ const OnboardingScreen = () => {
     message: string,
     onContinue: () => void,
   ) => (
-    <View className="flex-1 items-center justify-between px-6 py-10">
-      <View className="flex-1 items-center justify-center">
+    <View className="flex-1 bg-white">
+      <View className="flex-1 items-center justify-center px-6 pt-10">
         {/* Speech Bubble */}
         <View className="bg-white border border-gray-300 rounded-3xl p-4 mb-8 w-full max-w-xs">
           <Text className="text-center text-xl font-medium">{message}</Text>
@@ -62,13 +62,15 @@ const OnboardingScreen = () => {
         </View>
       </View>
 
-      {/* Continue Button */}
-      <TouchableOpacity
-        className="bg-[#ED7930] w-full py-4 rounded-xl items-center justify-center mb-4"
-        onPress={onContinue}
-      >
-        <Text className="text-white text-xl font-semibold">Continue</Text>
-      </TouchableOpacity>
+      {/* Continue Button - now in a separate fixed bottom container */}
+      <View className="px-6 pb-8 w-full">
+        <TouchableOpacity
+          className="bg-[#ED7930] w-full py-4 rounded-xl items-center justify-center"
+          onPress={onContinue}
+        >
+          <Text className="text-white text-xl font-semibold">Continue</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
