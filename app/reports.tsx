@@ -334,14 +334,6 @@ export default function ReportsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-4 border-b border-gray-200">
-        <TouchableOpacity onPress={handleBackPress} className="mr-4">
-          <ArrowLeft size={24} color="#000" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold">Reports & Analytics</Text>
-      </View>
-
       {/* Tab Navigation */}
       <View className="flex-row border-b border-gray-200">
         <TouchableOpacity

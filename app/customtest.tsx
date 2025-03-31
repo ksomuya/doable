@@ -18,7 +18,7 @@ import {
 
 export default function CustomTestScreen() {
   const router = useRouter();
-  const [selectedSubjects, setSelectedSubjects] = useState([]);
+  const [selectedSubjects, setSelectedSubjects] = useState<number[]>([]);
   const [timeLimit, setTimeLimit] = useState(30); // minutes
   const [questionCount, setQuestionCount] = useState(20);
   const [includeHardQuestions, setIncludeHardQuestions] = useState(false);
@@ -50,7 +50,7 @@ export default function CustomTestScreen() {
     router.back();
   };
 
-  const toggleSubject = (id) => {
+  const toggleSubject = (id: number) => {
     if (selectedSubjects.includes(id)) {
       setSelectedSubjects(
         selectedSubjects.filter((subjectId) => subjectId !== id),
@@ -74,14 +74,6 @@ export default function CustomTestScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-4 border-b border-gray-200">
-        <TouchableOpacity onPress={handleBackPress} className="mr-4">
-          <ArrowLeft size={24} color="#000" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold">Custom Test</Text>
-      </View>
-
       <ScrollView className="flex-1 px-5 py-4">
         {/* Subject Selection */}
         <View className="mb-6">

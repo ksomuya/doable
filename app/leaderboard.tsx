@@ -80,7 +80,7 @@ export default function LeaderboardScreen() {
     router.back();
   };
 
-  const getLeaderboardIcon = (position) => {
+  const getLeaderboardIcon = (position: number) => {
     switch (position) {
       case 0:
         return <Trophy size={24} color="#FFD700" />;
@@ -95,14 +95,6 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="flex-row items-center px-5 py-4 border-b border-gray-200">
-        <TouchableOpacity onPress={handleBackPress} className="mr-4">
-          <ArrowLeft size={24} color="#000" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold">Leaderboard</Text>
-      </View>
-
       {/* Leaderboard List */}
       <ScrollView className="flex-1">
         <View className="px-5 py-4">

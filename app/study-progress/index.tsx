@@ -291,15 +291,6 @@ const StudyProgressScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Study Progress</Text>
-        <Text style={styles.subtitle}>
-          Please indicate which topics you've already covered in your{" "}
-          {surveyData.currentClass || "class"} to help us personalize your
-          practice sessions
-        </Text>
-      </View>
-
       <View style={styles.subjectsContainer}>
         {Object.entries(subjectsData).map(([key, subject]) => (
           <TouchableOpacity
@@ -372,26 +363,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "white",
   },
-  header: {
-    padding: 20,
-    paddingTop: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#4B5563",
-    lineHeight: 22,
-    marginBottom: 8,
-  },
   subjectsContainer: {
     padding: 20,
   },
@@ -422,7 +393,6 @@ const styles = StyleSheet.create({
     marginRight: 12,
     backgroundColor: "#F3F4F6",
   },
-
   subjectName: {
     fontSize: 16,
     fontWeight: "600",
