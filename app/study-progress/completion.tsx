@@ -57,18 +57,18 @@ const CompletionScreen = () => {
         <Text style={styles.nextStepsText}>
           What would you like to do next?
         </Text>
+      </View>
+      
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
+          <Text style={styles.homeButtonText}>Go to Dashboard</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.practiceButton}
           onPress={handleStartPractice}
         >
-          <BookOpen size={20} color="#FFFFFF" />
           <Text style={styles.practiceButtonText}>Start Practice Session</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.homeButton} onPress={handleGoHome}>
-          <Home size={20} color="#4B5563" />
-          <Text style={styles.homeButtonText}>Go to Dashboard</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -139,8 +139,11 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 16,
   },
+  buttonContainer: {
+    padding: 24,
+    width: "100%",
+  },
   practiceButton: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#ED7930",
@@ -148,16 +151,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     width: "100%",
-    marginBottom: 12,
   },
   practiceButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "white",
-    marginLeft: 12,
   },
   homeButton: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F3F4F6",
@@ -165,12 +165,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     width: "100%",
+    marginBottom: 12,
   },
   homeButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#4B5563",
-    marginLeft: 12,
   },
 });
 

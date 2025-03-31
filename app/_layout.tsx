@@ -77,6 +77,10 @@ export default function RootLayout() {
               options={{ headerShown: false }}
             />
             <Stack.Screen
+              name="practice/intro"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
               name="practice/question"
               options={{ headerShown: false }}
             />
@@ -103,6 +107,22 @@ export default function RootLayout() {
             <Stack.Screen
               name="practice/notification-permission"
               options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="study-progress/index"
+              options={{ headerTitle: "Study Progress", headerShown: true }}
+            />
+            <Stack.Screen
+              name="study-progress/chapters"
+              options={{ headerTitle: "Study Progress", headerShown: false }}
+            />
+            <Stack.Screen
+              name="study-progress/confirmation"
+              options={{ headerTitle: "Study Progress", headerShown: false }}
+            />
+            <Stack.Screen
+              name="study-progress/completion"
+              options={{ headerTitle: "Study Progress Completion", headerShown: false }}
             />
             <Stack.Screen
               name="distraction-blocker/index"
