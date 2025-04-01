@@ -7,3 +7,6 @@ export interface Todo {
   created_at: string;
   updated_at: string;
 } 
+
+// Add default export
+export default Todo; 

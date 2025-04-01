@@ -320,14 +320,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Check if user is authenticated on app load
   useEffect(() => {
-    // In a real app, you would check for stored credentials
-    // For demo purposes, we'll just redirect to auth if not authenticated
-    if (!user.isAuthenticated) {
-      router.replace("/auth");
-    } else if (!user.isOnboarded) {
-      router.replace("/onboarding");
-    }
-  }, [user.isAuthenticated, user.isOnboarded]);
+    // Add a short delay to ensure layout mounting is complete
+    const timer = setTimeout(() => {
+      // Only attempt navigation if the app is not in a loading state
+      if (!isLoading) {
+        if (!user.isAuthenticated) {
+          router.replace("/auth");
+        } else if (!user.isOnboarded) {
+          router.replace("/onboarding");
+        }
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [user.isAuthenticated, user.isOnboarded, isLoading]);
 
   // Update pet mood based on food and temperature levels
   useEffect(() => {
@@ -573,3 +579,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+// Add default export
+export default AppContext;

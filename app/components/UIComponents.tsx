@@ -132,4 +132,14 @@ export const SectionHeader = ({
       )}
     </View>
   );
-}; 
+};
+
+// Add default export at the end of the file
+const UIComponents = {
+  Button,
+  Card,
+  FormInput,
+  SectionHeader
+};
+
+export default UIComponents; 
