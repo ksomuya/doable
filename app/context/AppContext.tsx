@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { router } from "expo-router";
 import { useUser, useAuth } from "@clerk/clerk-expo";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type PracticeType = "refine" | "recall" | "conquer";
 
@@ -144,6 +145,14 @@ const defaultPracticeSession: PracticeSession = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Keys for AsyncStorage
+const STORAGE_KEYS = {
+  USER_DATA: '@doable:user_data',
+  PET_DATA: '@doable:pet_data',
+  SURVEY_DATA: '@doable:survey_data',
+  STUDIED_CHAPTERS: '@doable:studied_chapters',
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -156,6 +165,134 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     defaultPracticeSession,
   );
   const [studiedChapters, setStudiedChapters] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load persisted data on app start
+  useEffect(() => {
+    const loadPersistedData = async () => {
+      try {
+        const [userData, petData, surveyData, chaptersData] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEYS.USER_DATA),
+          AsyncStorage.getItem(STORAGE_KEYS.PET_DATA),
+          AsyncStorage.getItem(STORAGE_KEYS.SURVEY_DATA),
+          AsyncStorage.getItem(STORAGE_KEYS.STUDIED_CHAPTERS),
+        ]);
+
+        if (userData) setUser({ ...defaultUser, ...JSON.parse(userData) });
+        if (petData) setPet({ ...defaultPet, ...JSON.parse(petData) });
+        if (surveyData) setSurveyData({ ...defaultSurveyData, ...JSON.parse(surveyData) });
+        if (chaptersData) setStudiedChapters(JSON.parse(chaptersData));
+      } catch (error) {
+        console.error('Error loading persisted data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPersistedData();
+  }, []);
+
+  // Save user data when it changes
+  useEffect(() => {
+    const saveUserData = async () => {
+      try {
+        const dataToSave = {
+          isOnboarded: user.isOnboarded,
+          isProfileSetup: user.isProfileSetup,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          dateOfBirth: user.dateOfBirth,
+          parentMobile: user.parentMobile,
+          snowballs: user.snowballs,
+          xp: user.xp,
+          level: user.level,
+          streak: user.streak,
+          streakGoal: user.streakGoal,
+          notificationsEnabled: user.notificationsEnabled,
+          rank: user.rank,
+        };
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(dataToSave));
+      } catch (error) {
+        console.error('Error saving user data:', error);
+      }
+    };
+
+    if (user.isAuthenticated) {
+      saveUserData();
+    }
+  }, [user]);
+
+  // Save pet data when it changes
+  useEffect(() => {
+    const savePetData = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.PET_DATA, JSON.stringify(pet));
+      } catch (error) {
+        console.error('Error saving pet data:', error);
+      }
+    };
+
+    savePetData();
+  }, [pet]);
+
+  // Save survey data when it changes
+  useEffect(() => {
+    const saveSurveyData = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.SURVEY_DATA, JSON.stringify(surveyData));
+      } catch (error) {
+        console.error('Error saving survey data:', error);
+      }
+    };
+
+    if (user.isAuthenticated && user.isOnboarded) {
+      saveSurveyData();
+    }
+  }, [surveyData, user.isAuthenticated, user.isOnboarded]);
+
+  // Save studied chapters when they change
+  useEffect(() => {
+    const saveStudiedChapters = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.STUDIED_CHAPTERS, JSON.stringify(studiedChapters));
+      } catch (error) {
+        console.error('Error saving studied chapters:', error);
+      }
+    };
+
+    if (studiedChapters.length > 0) {
+      saveStudiedChapters();
+    }
+  }, [studiedChapters]);
+
+  // Clear persisted data on sign out
+  const clearPersistedData = async () => {
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEYS.USER_DATA),
+        AsyncStorage.removeItem(STORAGE_KEYS.PET_DATA),
+        AsyncStorage.removeItem(STORAGE_KEYS.SURVEY_DATA),
+        AsyncStorage.removeItem(STORAGE_KEYS.STUDIED_CHAPTERS),
+      ]);
+    } catch (error) {
+      console.error('Error clearing persisted data:', error);
+    }
+  };
+
+  // Update the signOut function to clear persisted data
+  const signOut = async () => {
+    try {
+      await clerkSignOut();
+      await clearPersistedData();
+      setUser(defaultUser);
+      setPet(defaultPet);
+      setSurveyData(defaultSurveyData);
+      setStudiedChapters([]);
+      router.replace("/auth");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   // Update user data when Clerk user changes
   useEffect(() => {
@@ -210,16 +347,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const signIn = () => {
     // This is now handled by Clerk, but we keep the method for compatibility
     // The actual user state update happens in the useEffect above when Clerk user changes
-  };
-
-  const signOut = async () => {
-    try {
-      await clerkSignOut();
-      setUser(defaultUser);
-      router.replace("/auth");
-    } catch (error) {
-      console.error("Error signing out:", error);
-    }
   };
 
   // Onboarding actions
@@ -431,6 +558,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     completePracticeSession,
     updateStudiedChapters,
   };
+
+  if (isLoading) {
+    return null; // Or return a loading spinner
+  }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
