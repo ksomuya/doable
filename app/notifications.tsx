@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,22 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { ArrowLeft, Bell, Check, Trash2 } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Storage key
+const NOTIFICATIONS_STORAGE_KEY = "doable_notifications";
+
+// Define notification type
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+}
 
 // Sample notification data
-const initialNotifications = [
+const initialNotifications: Notification[] = [
   {
     id: "1",
     title: "New Achievement Unlocked",
@@ -24,14 +37,14 @@ const initialNotifications = [
     title: "Daily Streak Reminder",
     message: "Don't forget to practice today to maintain your 7-day streak!",
     time: "Yesterday",
-    read: true,
+    read: false,
   },
   {
     id: "3",
     title: "New Study Material Available",
     message: "Check out the new Physics practice questions in the library.",
     time: "2 days ago",
-    read: true,
+    read: false,
   },
   {
     id: "4",
@@ -39,44 +52,110 @@ const initialNotifications = [
     message:
       "Your weekly progress report is now available. You've improved by 15%!",
     time: "1 week ago",
-    read: true,
+    read: false,
   },
 ];
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load notifications from AsyncStorage on component mount
+  useEffect(() => {
+    const loadNotifications = async () => {
+      try {
+        const storedNotifications = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+        if (storedNotifications) {
+          setNotifications(JSON.parse(storedNotifications));
+        } else {
+          // First time app runs, use initialNotifications
+          setNotifications(initialNotifications);
+          await AsyncStorage.setItem(
+            NOTIFICATIONS_STORAGE_KEY, 
+            JSON.stringify(initialNotifications)
+          );
+        }
+      } catch (error) {
+        console.error("Failed to load notifications:", error);
+        setNotifications(initialNotifications);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadNotifications();
+  }, []);
+
+  // Save notifications to AsyncStorage whenever they change
+  useEffect(() => {
+    if (!isLoading) {
+      const saveNotifications = async () => {
+        try {
+          await AsyncStorage.setItem(
+            NOTIFICATIONS_STORAGE_KEY, 
+            JSON.stringify(notifications)
+          );
+        } catch (error) {
+          console.error("Failed to save notifications:", error);
+        }
+      };
+
+      saveNotifications();
+    }
+  }, [notifications, isLoading]);
 
   const handleBackPress = () => {
     router.back();
   };
 
-  const markAllAsRead = () => {
-    setNotifications(
-      notifications.map((notification) => ({
-        ...notification,
-        read: true,
-      })),
-    );
+  const markAllAsRead = async () => {
+    const updatedNotifications = notifications.map((notification) => ({
+      ...notification,
+      read: true,
+    }));
+    
+    setNotifications(updatedNotifications);
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
     setNotifications([]);
   };
 
-  const toggleReadStatus = (id: string) => {
-    setNotifications(
-      notifications.map((notification) =>
-        notification.id === id
-          ? { ...notification, read: !notification.read }
-          : notification,
-      ),
+  const markAsRead = (id: string) => {
+    const updatedNotifications = notifications.map((notification) =>
+      notification.id === id
+        ? { ...notification, read: true }
+        : notification
     );
+    
+    setNotifications(updatedNotifications);
+  };
+
+  const handleNotificationPress = (notification: Notification) => {
+    // If the notification is not read, mark it as read
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    
+    // Add any navigation or additional actions here based on notification type
+    // For example:
+    // if (notification.type === 'achievement') {
+    //   router.push('/achievements');
+    // }
   };
 
   const unreadCount = notifications.filter(
     (notification) => !notification.read,
   ).length;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text>Loading notifications...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -140,7 +219,7 @@ export default function NotificationsScreen() {
                   ? styles.readNotification
                   : styles.unreadNotification,
               ]}
-              onPress={() => toggleReadStatus(notification.id)}
+              onPress={() => handleNotificationPress(notification)}
             >
               <View style={styles.notificationContent}>
                 <View style={styles.notificationHeader}>
@@ -176,6 +255,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "white",
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: "row",
@@ -257,17 +340,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   unreadIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#4F46E5",
     marginLeft: 8,
   },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    padding: 40,
-    marginTop: 40,
+    padding: 48,
   },
   emptyStateTitle: {
     fontSize: 18,
@@ -280,6 +362,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     textAlign: "center",
-    maxWidth: "80%",
+    lineHeight: 20,
   },
 });

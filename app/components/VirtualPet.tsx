@@ -4,29 +4,30 @@ import {
   StyleSheet,
   Text,
   Image as RNImage,
+  Dimensions,
 } from "react-native";
 import { useAppContext } from "../context/AppContext";
 
+const { width } = Dimensions.get('window');
+
 const VirtualPet = () => {
   const { user } = useAppContext();
+  const userName = user.firstName || (user.name ? user.name.split(" ")[0] : "there");
 
   return (
     <View style={styles.container}>
-      <View style={styles.petContainer}>
+      <View style={styles.petWrapper}>
+        <RNImage
+          source={require("../../assets/images/penguine.svg")}
+          style={styles.penguinImage}
+          onError={() => console.log("Failed to load penguin image")}
+        />
+        
         <View style={styles.speechBubble}>
           <Text style={styles.speechText}>
-            Hi,{" "}
-            {user.firstName || (user.name ? user.name.split(" ")[0] : "there")}!
+            Hi, {userName}!
           </Text>
           <View style={styles.speechTail} />
-        </View>
-
-        <View style={styles.pet}>
-          <RNImage
-            source={require("../../assets/images/penguine.svg")}
-            style={styles.penguinImage}
-            onError={() => console.log("Failed to load penguin image")}
-          />
         </View>
       </View>
     </View>
@@ -36,26 +37,26 @@ const VirtualPet = () => {
 const styles = StyleSheet.create({
   container: {
     width: "100%",
+    height: "100%",
     alignItems: "center",
-    padding: 20,
-  },
-  petContainer: {
-    width: "100%",
-    aspectRatio: 2,
-    borderRadius: 20,
     justifyContent: "center",
+  },
+  petWrapper: {
+    position: "relative",
+    width: 180,
+    height: 180,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-    backgroundColor: "#DBEAFE",
+    justifyContent: "center",
+  },
+  penguinImage: {
+    width: 140,
+    height: 140,
+    resizeMode: "contain",
   },
   speechBubble: {
     position: "absolute",
-    top: 40,
-    right: 80,
+    top: 10,
+    right: -10,
     backgroundColor: "white",
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -82,15 +83,6 @@ const styles = StyleSheet.create({
     borderRightWidth: 8,
     borderTopWidth: 10,
     borderTopColor: "white",
-  },
-  pet: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  penguinImage: {
-    width: 120,
-    height: 120,
-    resizeMode: "contain",
   },
 });
 

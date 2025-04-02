@@ -24,6 +24,16 @@ import {
 
 const { height } = Dimensions.get("window");
 
+// Brand colors
+const COLORS = {
+  accent: "#f97316",        // Orange accent color
+  accentLight: "#fff1e6",   // Light orange for backgrounds
+  white: "#FFFFFF",
+  black: "#000000", 
+  gray: "#6B7280",
+  lightGray: "#F9FAFB",
+};
+
 interface ChapterInputProps {
   onSave?: (chapters: string[]) => void;
   initialChapters?: string[];
@@ -165,14 +175,14 @@ const ChapterInput = ({
         <View style={styles.progressSection}>
           <View style={styles.progressColumn}>
             <View style={styles.progressLabelRow}>
-              <BookOpen size={14} color="#4F46E5" />
+              <BookOpen size={14} color={COLORS.accent} />
               <Text style={styles.progressLabel}>Topics: {chapters.length}/{totalGoal}</Text>
             </View>
             <View style={styles.progressBarContainer}>
               <View 
                 style={[
                   styles.progressBar, 
-                  {width: `${progressPercentage}%`, backgroundColor: '#4F46E5'}
+                  {width: `${progressPercentage}%`, backgroundColor: COLORS.accent}
                 ]} 
               />
             </View>
@@ -203,7 +213,7 @@ const ChapterInput = ({
                 style={styles.addTopicButton} 
                 onPress={handleAddChapter}
               >
-                <Plus size={16} color="#4F46E5" />
+                <Plus size={16} color={COLORS.white} />
                 <Text style={styles.addTopicText}>Add</Text>
               </TouchableOpacity>
             </View>
@@ -212,7 +222,7 @@ const ChapterInput = ({
               {chapters.map((chapter, index) => (
                 <View key={index} style={styles.topicItem}>
                   <View style={styles.topicContent}>
-                    <CheckCircle size={16} color="#4F46E5" style={styles.topicIcon} />
+                    <CheckCircle size={16} color={COLORS.accent} style={styles.topicIcon} />
                     <Text style={styles.topicText}>{chapter}</Text>
                   </View>
                   <TouchableOpacity onPress={() => handleRemoveChapter(chapter)}>
@@ -239,7 +249,7 @@ const ChapterInput = ({
         {/* Motivational Footer */}
         {chapters.length > 0 && (
           <View style={styles.cardFooter}>
-            <TrendingUp size={14} color="#4F46E5" />
+            <TrendingUp size={14} color={COLORS.accent} />
             <Text style={styles.footerText}>
               {chapters.length >= totalGoal 
                 ? "Amazing! You've hit your goal for today." 
@@ -369,12 +379,12 @@ const styles = StyleSheet.create({
   cardHeader: {
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.accentLight,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "white",
+    color: COLORS.accent,
   },
   progressSection: {
     padding: 16,
@@ -421,7 +431,7 @@ const styles = StyleSheet.create({
   addTopicButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.accent,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 20,
@@ -429,7 +439,7 @@ const styles = StyleSheet.create({
   addTopicText: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#4F46E5",
+    color: COLORS.white,
     marginLeft: 4,
   },
   topicsList: {
@@ -470,7 +480,7 @@ const styles = StyleSheet.create({
   emptyStateButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.accent,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -484,13 +494,13 @@ const styles = StyleSheet.create({
   cardFooter: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.accentLight,
     paddingVertical: 12,
     paddingHorizontal: 16,
   },
   footerText: {
     fontSize: 12,
-    color: "#4F46E5",
+    color: COLORS.accent,
     fontWeight: "500",
     marginLeft: 6,
   },
