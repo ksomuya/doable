@@ -18,6 +18,7 @@ import {
   ChartBar as BarChart2,
   Bell,
   Focus,
+  BookOpen,
 } from "lucide-react-native";
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
@@ -84,6 +85,8 @@ export default function HomeScreen() {
       router.push("/leaderboard");
     } else if (cardType === "Reports") {
       router.push("/reports");
+    } else if (cardType === "Study Habits") {
+      router.push("/study-habits");
     } else if (cardType === "Remove Distractions") {
       router.push("/distraction-blocker");
     }
@@ -181,6 +184,16 @@ export default function HomeScreen() {
                 <ClipboardList size={24} color="#10b981" />
               </TouchableOpacity>
               <Text style={styles.buttonLabel}>Reports</Text>
+            </View>
+            
+            <View style={styles.buttonWithLabel}>
+              <TouchableOpacity 
+                style={styles.circularButton}
+                onPress={() => handleCardPress("Study Habits")}
+              >
+                <BookOpen size={24} color="#8b5cf6" />
+              </TouchableOpacity>
+              <Text style={styles.buttonLabel}>Study Habits</Text>
             </View>
             
             <View style={styles.buttonWithLabel}>

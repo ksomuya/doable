@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -16,25 +17,73 @@ import {
   Zap,
   Award,
   Calendar,
+  BarChart,
 } from "lucide-react-native";
 import { useAppContext } from "./context/AppContext";
 
 export default function ReportsScreen() {
   const router = useRouter();
   const { user } = useAppContext();
-  const [activeTab, setActiveTab] = useState("performance");
-
-  const screenWidth = Dimensions.get("window").width;
+  const [activeTab, setActiveTab] = useState("daily");
 
   const handleBackPress = () => {
     router.back();
   };
 
   // Mock data for performance metrics
-  const performanceData = {
+  const dailyData = {
+    date: "Today, October 18, 2023",
+    totalQuestions: 42,
+    correctAnswers: 35,
+    averageTime: 38, // seconds per question
+    studyTime: 2.5, // hours
+    topicsStudied: ["Organic Chemistry", "Electromagnetism", "Calculus"],
+    sessions: [
+      { time: "8:30 AM", duration: 45, score: 85 },
+      { time: "1:15 PM", duration: 30, score: 92 },
+      { time: "7:00 PM", duration: 75, score: 78 },
+    ],
+  };
+
+  const weeklyData = {
+    dateRange: "Oct 12 - Oct 18, 2023",
+    totalQuestions: 245,
+    correctAnswers: 186,
+    averageTime: 42, // seconds per question
+    studyTime: 14.5, // hours
+    dailyBreakdown: [
+      { day: "Mon", questions: 35, accuracy: 76 },
+      { day: "Tue", questions: 42, accuracy: 81 },
+      { day: "Wed", questions: 28, accuracy: 68 },
+      { day: "Thu", questions: 54, accuracy: 85 },
+      { day: "Fri", questions: 39, accuracy: 74 },
+      { day: "Sat", questions: 25, accuracy: 72 },
+      { day: "Sun", questions: 22, accuracy: 68 },
+    ],
+    weakTopics: [
+      { name: "Organic Chemistry", accuracy: 62 },
+      { name: "Electromagnetism", accuracy: 68 },
+    ],
+    strongTopics: [
+      { name: "Mechanics", accuracy: 94 },
+      { name: "Algebra", accuracy: 91 },
+    ],
+  };
+
+  const monthlyData = {
+    month: "October 2023",
     totalQuestions: 1250,
     correctAnswers: 875,
-    averageTime: 42, // seconds per question
+    averageTime: 45, // seconds per question
+    studyTime: 58, // hours
+    weeklyBreakdown: [
+      { week: "Week 1", questions: 305, accuracy: 78 },
+      { week: "Week 2", questions: 342, accuracy: 72 },
+      { week: "Week 3", questions: 398, accuracy: 68 },
+      { week: "Week 4", questions: 205, accuracy: 75 },
+    ],
+    improvement: 8, // percentage improvement
+    longestStreak: 14, // days
     weakTopics: [
       { name: "Organic Chemistry", accuracy: 62 },
       { name: "Electromagnetism", accuracy: 68 },
@@ -45,116 +94,179 @@ export default function ReportsScreen() {
       { name: "Algebra", accuracy: 91 },
       { name: "Inorganic Chemistry", accuracy: 89 },
     ],
-    recentTests: [
-      { date: "2023-10-15", score: 85, totalQuestions: 30, subject: "Physics" },
-      {
-        date: "2023-10-12",
-        score: 78,
-        totalQuestions: 30,
-        subject: "Chemistry",
-      },
-      {
-        date: "2023-10-09",
-        score: 92,
-        totalQuestions: 30,
-        subject: "Mathematics",
-      },
-    ],
   };
 
-  // Mock data for study habits
-  const studyHabitsData = {
-    weeklyStudyHours: 28,
-    longestStreak: 42, // days
-    averageSessionLength: 65, // minutes
-    mostProductiveDay: "Tuesday",
-    mostProductiveTime: "7:00 PM",
-    chaptersCompleted: 32,
-  };
+  const renderDailyReport = () => (
+    <View style={styles.tabContent}>
+      {/* Date Display */}
+      <View style={styles.dateContainer}>
+        <Calendar size={18} color="#4F46E5" />
+        <Text style={styles.dateText}>{dailyData.date}</Text>
+      </View>
 
-  const renderPerformanceTab = () => (
-    <View className="px-5 py-4">
-      {/* Overall Stats */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold mb-3">Overall Performance</Text>
-        <View className="flex-row flex-wrap">
-          <View className="w-1/2 pr-2 mb-3">
-            <View className="bg-blue-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <BookOpen size={18} color="#3b82f6" />
-                <Text className="ml-2 text-blue-500 font-medium">
-                  Questions
-                </Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {performanceData.totalQuestions}
-              </Text>
-              <Text className="text-gray-500">Total Attempted</Text>
-            </View>
+      {/* Daily Stats */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <BookOpen size={20} color="#3b82f6" />
           </View>
-          <View className="w-1/2 pl-2 mb-3">
-            <View className="bg-green-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <TrendingUp size={18} color="#10b981" />
-                <Text className="ml-2 text-green-500 font-medium">
-                  Accuracy
-                </Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {Math.round(
-                  (performanceData.correctAnswers /
-                    performanceData.totalQuestions) *
-                    100,
-                )}
-                %
-              </Text>
-              <Text className="text-gray-500">Correct Answers</Text>
-            </View>
+          <Text style={styles.statValue}>{dailyData.totalQuestions}</Text>
+          <Text style={styles.statLabel}>Questions</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <TrendingUp size={20} color="#10b981" />
           </View>
-          <View className="w-1/2 pr-2">
-            <View className="bg-purple-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <Clock size={18} color="#8b5cf6" />
-                <Text className="ml-2 text-purple-500 font-medium">
-                  Avg. Time
-                </Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {performanceData.averageTime}s
-              </Text>
-              <Text className="text-gray-500">Per Question</Text>
-            </View>
+          <Text style={styles.statValue}>
+            {Math.round((dailyData.correctAnswers / dailyData.totalQuestions) * 100)}%
+          </Text>
+          <Text style={styles.statLabel}>Accuracy</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Clock size={20} color="#8b5cf6" />
           </View>
-          <View className="w-1/2 pl-2">
-            <View className="bg-orange-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <Award size={18} color="#f97316" />
-                <Text className="ml-2 text-orange-500 font-medium">
-                  XP Earned
-                </Text>
+          <Text style={styles.statValue}>{dailyData.averageTime}s</Text>
+          <Text style={styles.statLabel}>Avg Time</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Clock size={20} color="#f97316" />
+          </View>
+          <Text style={styles.statValue}>{dailyData.studyTime}h</Text>
+          <Text style={styles.statLabel}>Study Time</Text>
+        </View>
+      </View>
+
+      {/* Today's Study Sessions */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Today's Study Sessions</Text>
+        {dailyData.sessions.map((session, index) => (
+          <View key={index} style={styles.sessionCard}>
+            <View style={styles.sessionHeader}>
+              <Text style={styles.sessionTime}>{session.time}</Text>
+              <View style={styles.sessionScoreContainer}>
+                <Text style={styles.sessionScore}>{session.score}%</Text>
               </View>
-              <Text className="text-2xl font-bold">
-                {user.xp.toLocaleString()}
-              </Text>
-              <Text className="text-gray-500">Total Points</Text>
             </View>
+            <Text style={styles.sessionDuration}>{session.duration} minutes</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Topics Studied Today */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Topics Studied Today</Text>
+        <View style={styles.topicsContainer}>
+          {dailyData.topicsStudied.map((topic, index) => (
+            <View key={index} style={styles.topicPill}>
+              <Text style={styles.topicText}>{topic}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderWeeklyReport = () => (
+    <View style={styles.tabContent}>
+      {/* Date Range Display */}
+      <View style={styles.dateContainer}>
+        <Calendar size={18} color="#4F46E5" />
+        <Text style={styles.dateText}>{weeklyData.dateRange}</Text>
+      </View>
+
+      {/* Weekly Stats */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <BookOpen size={20} color="#3b82f6" />
+          </View>
+          <Text style={styles.statValue}>{weeklyData.totalQuestions}</Text>
+          <Text style={styles.statLabel}>Questions</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <TrendingUp size={20} color="#10b981" />
+          </View>
+          <Text style={styles.statValue}>
+            {Math.round((weeklyData.correctAnswers / weeklyData.totalQuestions) * 100)}%
+          </Text>
+          <Text style={styles.statLabel}>Accuracy</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Clock size={20} color="#8b5cf6" />
+          </View>
+          <Text style={styles.statValue}>{weeklyData.averageTime}s</Text>
+          <Text style={styles.statLabel}>Avg Time</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Clock size={20} color="#f97316" />
+          </View>
+          <Text style={styles.statValue}>{weeklyData.studyTime}h</Text>
+          <Text style={styles.statLabel}>Study Time</Text>
+        </View>
+      </View>
+
+      {/* Daily Breakdown */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Daily Breakdown</Text>
+        <View style={styles.chartContainer}>
+          {weeklyData.dailyBreakdown.map((day, index) => (
+            <View key={index} style={styles.chartColumn}>
+              <View style={styles.barContainer}>
+                <View 
+                  style={[
+                    styles.accuracyBar, 
+                    { height: day.accuracy * 1.5 } // Scale height based on accuracy
+                  ]}
+                />
+                <View 
+                  style={[
+                    styles.questionsIndicator,
+                    { bottom: day.questions * 1.5 } // Position indicator based on questions
+                  ]}
+                />
+              </View>
+              <Text style={styles.chartLabel}>{day.day}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.chartLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#4F46E5" }]} />
+            <Text style={styles.legendText}>Accuracy</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendColor, { backgroundColor: "#F97316" }]} />
+            <Text style={styles.legendText}>Questions</Text>
           </View>
         </View>
       </View>
 
       {/* Weak Topics */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold mb-3">Areas for Improvement</Text>
-        {performanceData.weakTopics.map((topic, index) => (
-          <View key={index} className="bg-red-50 p-4 rounded-xl mb-2">
-            <View className="flex-row justify-between items-center">
-              <Text className="font-medium">{topic.name}</Text>
-              <Text className="font-bold text-red-500">{topic.accuracy}%</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Areas for Improvement</Text>
+        {weeklyData.weakTopics.map((topic, index) => (
+          <View key={index} style={styles.topicCard}>
+            <View style={styles.topicHeader}>
+              <Text style={styles.topicName}>{topic.name}</Text>
+              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
             </View>
-            <View className="h-2 bg-red-100 rounded-full mt-2 overflow-hidden">
-              <View
-                className="h-full bg-red-500 rounded-full"
-                style={{ width: `${topic.accuracy}%` }}
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${topic.accuracy}%`, backgroundColor: "#EF4444" }
+                ]} 
               />
             </View>
           </View>
@@ -162,208 +274,531 @@ export default function ReportsScreen() {
       </View>
 
       {/* Strong Topics */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold mb-3">Strong Areas</Text>
-        {performanceData.strongTopics.map((topic, index) => (
-          <View key={index} className="bg-green-50 p-4 rounded-xl mb-2">
-            <View className="flex-row justify-between items-center">
-              <Text className="font-medium">{topic.name}</Text>
-              <Text className="font-bold text-green-500">
-                {topic.accuracy}%
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Strong Areas</Text>
+        {weeklyData.strongTopics.map((topic, index) => (
+          <View key={index} style={styles.topicCard}>
+            <View style={styles.topicHeader}>
+              <Text style={styles.topicName}>{topic.name}</Text>
+              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${topic.accuracy}%`, backgroundColor: "#10B981" }
+                ]} 
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderMonthlyReport = () => (
+    <View style={styles.tabContent}>
+      {/* Month Display */}
+      <View style={styles.dateContainer}>
+        <Calendar size={18} color="#4F46E5" />
+        <Text style={styles.dateText}>{monthlyData.month}</Text>
+      </View>
+
+      {/* Monthly Stats */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <BookOpen size={20} color="#3b82f6" />
+          </View>
+          <Text style={styles.statValue}>{monthlyData.totalQuestions}</Text>
+          <Text style={styles.statLabel}>Questions</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <TrendingUp size={20} color="#10b981" />
+          </View>
+          <Text style={styles.statValue}>
+            {Math.round((monthlyData.correctAnswers / monthlyData.totalQuestions) * 100)}%
+          </Text>
+          <Text style={styles.statLabel}>Accuracy</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Zap size={20} color="#8b5cf6" />
+          </View>
+          <Text style={styles.statValue}>{monthlyData.longestStreak}</Text>
+          <Text style={styles.statLabel}>Longest Streak</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <View style={styles.statIconContainer}>
+            <Clock size={20} color="#f97316" />
+          </View>
+          <Text style={styles.statValue}>{monthlyData.studyTime}h</Text>
+          <Text style={styles.statLabel}>Study Time</Text>
+        </View>
+      </View>
+
+      {/* Improvement Highlight */}
+      <View style={styles.section}>
+        <View style={styles.improvementCard}>
+          <View style={styles.improvementHeader}>
+            <BarChart size={24} color="#4F46E5" />
+            <Text style={styles.improvementTitle}>Monthly Progress</Text>
+          </View>
+          <Text style={styles.improvementValue}>+{monthlyData.improvement}%</Text>
+          <Text style={styles.improvementDescription}>
+            Your performance has improved {monthlyData.improvement}% compared to last month
+          </Text>
+        </View>
+      </View>
+
+      {/* Weekly Breakdown */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Weekly Breakdown</Text>
+        {monthlyData.weeklyBreakdown.map((week, index) => (
+          <View key={index} style={styles.weekCard}>
+            <View style={styles.weekHeader}>
+              <Text style={styles.weekName}>{week.week}</Text>
+              <Text style={styles.weekStats}>
+                {week.questions} questions | {week.accuracy}% accuracy
               </Text>
             </View>
-            <View className="h-2 bg-green-100 rounded-full mt-2 overflow-hidden">
-              <View
-                className="h-full bg-green-500 rounded-full"
-                style={{ width: `${topic.accuracy}%` }}
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${week.accuracy}%`, backgroundColor: "#4F46E5" }
+                ]} 
               />
             </View>
           </View>
         ))}
       </View>
 
-      {/* Recent Tests */}
-      <View>
-        <Text className="text-lg font-bold mb-3">Recent Tests</Text>
-        {performanceData.recentTests.map((test, index) => {
-          const date = new Date(test.date);
-          const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-          return (
-            <View key={index} className="bg-gray-50 p-4 rounded-xl mb-2">
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="font-medium">{test.subject}</Text>
-                <Text className="text-gray-500">{formattedDate}</Text>
-              </View>
-              <View className="flex-row justify-between items-center">
-                <Text className="text-gray-500">
-                  {test.score}/{test.totalQuestions} correct
-                </Text>
-                <Text className="font-bold">
-                  {Math.round((test.score / test.totalQuestions) * 100)}%
-                </Text>
-              </View>
+      {/* Weak & Strong Topics */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Performance by Topic</Text>
+        
+        <Text style={styles.subSectionTitle}>Areas for Improvement</Text>
+        {monthlyData.weakTopics.map((topic, index) => (
+          <View key={index} style={styles.topicCard}>
+            <View style={styles.topicHeader}>
+              <Text style={styles.topicName}>{topic.name}</Text>
+              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
             </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  const renderStudyHabitsTab = () => (
-    <View className="px-5 py-4">
-      {/* Study Habits Stats */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold mb-3">Study Habits</Text>
-        <View className="flex-row flex-wrap">
-          <View className="w-1/2 pr-2 mb-3">
-            <View className="bg-blue-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <Clock size={18} color="#3b82f6" />
-                <Text className="ml-2 text-blue-500 font-medium">
-                  Weekly Hours
-                </Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {studyHabitsData.weeklyStudyHours}
-              </Text>
-              <Text className="text-gray-500">Hours Studied</Text>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${topic.accuracy}%`, backgroundColor: "#EF4444" }
+                ]} 
+              />
             </View>
           </View>
-          <View className="w-1/2 pl-2 mb-3">
-            <View className="bg-green-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <Zap size={18} color="#10b981" />
-                <Text className="ml-2 text-green-500 font-medium">Streak</Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {studyHabitsData.longestStreak}
-              </Text>
-              <Text className="text-gray-500">Longest Streak</Text>
+        ))}
+        
+        <Text style={styles.subSectionTitle}>Strong Areas</Text>
+        {monthlyData.strongTopics.map((topic, index) => (
+          <View key={index} style={styles.topicCard}>
+            <View style={styles.topicHeader}>
+              <Text style={styles.topicName}>{topic.name}</Text>
+              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
+            </View>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${topic.accuracy}%`, backgroundColor: "#10B981" }
+                ]} 
+              />
             </View>
           </View>
-          <View className="w-1/2 pr-2">
-            <View className="bg-purple-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <Clock size={18} color="#8b5cf6" />
-                <Text className="ml-2 text-purple-500 font-medium">
-                  Avg. Session
-                </Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {studyHabitsData.averageSessionLength}
-              </Text>
-              <Text className="text-gray-500">Minutes</Text>
-            </View>
-          </View>
-          <View className="w-1/2 pl-2">
-            <View className="bg-orange-50 p-4 rounded-xl">
-              <View className="flex-row items-center mb-2">
-                <BookOpen size={18} color="#f97316" />
-                <Text className="ml-2 text-orange-500 font-medium">
-                  Chapters
-                </Text>
-              </View>
-              <Text className="text-2xl font-bold">
-                {studyHabitsData.chaptersCompleted}
-              </Text>
-              <Text className="text-gray-500">Completed</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Productivity Insights */}
-      <View className="mb-6">
-        <Text className="text-lg font-bold mb-3">Productivity Insights</Text>
-        <View className="bg-indigo-50 p-4 rounded-xl mb-3">
-          <View className="flex-row items-center mb-2">
-            <Calendar size={18} color="#6366f1" />
-            <Text className="ml-2 text-indigo-500 font-medium">
-              Most Productive Day
-            </Text>
-          </View>
-          <Text className="text-2xl font-bold">
-            {studyHabitsData.mostProductiveDay}
-          </Text>
-          <Text className="text-gray-500">You perform best on this day</Text>
-        </View>
-        <View className="bg-indigo-50 p-4 rounded-xl">
-          <View className="flex-row items-center mb-2">
-            <Clock size={18} color="#6366f1" />
-            <Text className="ml-2 text-indigo-500 font-medium">
-              Peak Study Time
-            </Text>
-          </View>
-          <Text className="text-2xl font-bold">
-            {studyHabitsData.mostProductiveTime}
-          </Text>
-          <Text className="text-gray-500">Your optimal study time</Text>
-        </View>
-      </View>
-
-      {/* Recommendations */}
-      <View>
-        <Text className="text-lg font-bold mb-3">Recommendations</Text>
-        <View className="bg-gray-50 p-4 rounded-xl mb-2">
-          <Text className="font-medium mb-1">
-            Increase study sessions on weekends
-          </Text>
-          <Text className="text-gray-500">
-            Your weekend productivity is 30% lower than weekdays
-          </Text>
-        </View>
-        <View className="bg-gray-50 p-4 rounded-xl mb-2">
-          <Text className="font-medium mb-1">
-            Take more breaks during long sessions
-          </Text>
-          <Text className="text-gray-500">
-            Your performance drops after 90 minutes of continuous study
-          </Text>
-        </View>
-        <View className="bg-gray-50 p-4 rounded-xl">
-          <Text className="font-medium mb-1">
-            Review weak topics more frequently
-          </Text>
-          <Text className="text-gray-500">
-            Spaced repetition will help improve retention
-          </Text>
-        </View>
+        ))}
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+          <ArrowLeft size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Performance Reports</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       {/* Tab Navigation */}
-      <View className="flex-row border-b border-gray-200">
+      <View style={styles.tabBar}>
         <TouchableOpacity
-          onPress={() => setActiveTab("performance")}
-          className={`flex-1 py-3 ${activeTab === "performance" ? "border-b-2 border-black" : ""}`}
+          onPress={() => setActiveTab("daily")}
+          style={[
+            styles.tabButton,
+            activeTab === "daily" && styles.activeTabButton
+          ]}
         >
           <Text
-            className={`text-center font-medium ${activeTab === "performance" ? "text-black" : "text-gray-500"}`}
+            style={[
+              styles.tabButtonText,
+              activeTab === "daily" && styles.activeTabButtonText
+            ]}
           >
-            Performance
+            Daily
           </Text>
         </TouchableOpacity>
+        
         <TouchableOpacity
-          onPress={() => setActiveTab("studyHabits")}
-          className={`flex-1 py-3 ${activeTab === "studyHabits" ? "border-b-2 border-black" : ""}`}
+          onPress={() => setActiveTab("weekly")}
+          style={[
+            styles.tabButton,
+            activeTab === "weekly" && styles.activeTabButton
+          ]}
         >
           <Text
-            className={`text-center font-medium ${activeTab === "studyHabits" ? "text-black" : "text-gray-500"}`}
+            style={[
+              styles.tabButtonText,
+              activeTab === "weekly" && styles.activeTabButtonText
+            ]}
           >
-            Study Habits
+            Weekly
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          onPress={() => setActiveTab("monthly")}
+          style={[
+            styles.tabButton,
+            activeTab === "monthly" && styles.activeTabButton
+          ]}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "monthly" && styles.activeTabButtonText
+            ]}
+          >
+            Monthly
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Content */}
-      <ScrollView className="flex-1">
-        {activeTab === "performance"
-          ? renderPerformanceTab()
-          : renderStudyHabitsTab()}
+      <ScrollView style={styles.scrollView}>
+        {activeTab === "daily" && renderDailyReport()}
+        {activeTab === "weekly" && renderWeeklyReport()}
+        {activeTab === "monthly" && renderMonthlyReport()}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  backButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#F3F4F6",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  placeholder: {
+    width: 40,
+  },
+  tabBar: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  activeTabButton: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#4F46E5",
+  },
+  tabButtonText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  activeTabButtonText: {
+    color: "#4F46E5",
+  },
+  scrollView: {
+    flex: 1,
+  },
+  tabContent: {
+    padding: 20,
+  },
+  dateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  dateText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#4F46E5",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 24,
+  },
+  statCard: {
+    width: "48%",
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  statLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 4,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 12,
+    color: "#1F2937",
+  },
+  subSectionTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginTop: 16,
+    marginBottom: 8,
+    color: "#4B5563",
+  },
+  sessionCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  sessionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  sessionTime: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  sessionScoreContainer: {
+    backgroundColor: "#EEF2FF",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  sessionScore: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4F46E5",
+  },
+  sessionDuration: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  topicsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  topicPill: {
+    backgroundColor: "#EEF2FF",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  topicText: {
+    fontSize: 14,
+    color: "#4F46E5",
+    fontWeight: "500",
+  },
+  chartContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    height: 160,
+    marginBottom: 8,
+  },
+  chartColumn: {
+    alignItems: "center",
+    width: 30,
+  },
+  barContainer: {
+    height: 120,
+    width: 20,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 8,
+    position: "relative",
+  },
+  accuracyBar: {
+    width: 20,
+    backgroundColor: "#4F46E5",
+    borderRadius: 10,
+  },
+  questionsIndicator: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#F97316",
+    left: 6,
+  },
+  chartLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  chartLegend: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 8,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  topicCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  topicHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  topicName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1F2937",
+  },
+  topicAccuracy: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  weekCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+  },
+  weekHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  weekName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1F2937",
+  },
+  weekStats: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  improvementCard: {
+    backgroundColor: "#F3F4FF",
+    borderRadius: 12,
+    padding: 20,
+  },
+  improvementHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  improvementTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 12,
+  },
+  improvementValue: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#4F46E5",
+    marginBottom: 8,
+  },
+  improvementDescription: {
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 20,
+  },
+});
