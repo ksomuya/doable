@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -12,7 +12,11 @@ const { width } = Dimensions.get('window');
 
 const VirtualPet = () => {
   const { user } = useAppContext();
-  const userName = user.firstName || (user.name ? user.name.split(" ")[0] : "there");
+  
+  // Memoize this calculation to avoid unnecessary recomputation
+  const userName = useMemo(() => {
+    return user.firstName || (user.name ? user.name.split(" ")[0] : "there");
+  }, [user.firstName, user.name]);
 
   return (
     <View style={styles.container}>
@@ -111,4 +115,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default VirtualPet;
+export default React.memo(VirtualPet);

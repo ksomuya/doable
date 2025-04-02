@@ -76,7 +76,6 @@ type AppContextType = {
   practiceProgress: PracticeProgress;
   studiedChapters: string[];
   // Auth actions
-  signIn: () => void;
   signOut: () => void;
   // Onboarding actions
   completeSurvey: (data: SurveyData) => void;
@@ -389,7 +388,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         photoUrl:
           clerkUser.imageUrl ||
           "https://api.dicebear.com/7.x/avataaars/svg?seed=doable",
-        // Keep other user data like sreks, xp, etc.
       });
     } else {
       setUser(defaultUser);
@@ -427,12 +425,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => clearInterval(temperatureInterval);
   }, []);
 
-  // Auth actions - now just placeholders as Clerk handles the actual auth
-  const signIn = () => {
-    // This is now handled by Clerk, but we keep the method for compatibility
-    // The actual user state update happens in the useEffect above when Clerk user changes
-  };
-
   // Onboarding actions
   const completeSurvey = (data: SurveyData) => {
     setSurveyData(data);
@@ -440,7 +432,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       ...user,
       isOnboarded: true,
     });
-    // Router navigation is handled in the component
   };
 
   // Profile setup actions
@@ -459,7 +450,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       dateOfBirth,
       parentMobile,
     });
-    // Router navigation is handled in the component
   };
 
   // Streak actions
@@ -483,23 +473,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Goal actions
   const updateUserGoals = (goals: Partial<UserGoals>) => {
-    setUser(prevUser => {
-      const updatedGoals = {
+    setUser(prevUser => ({
+      ...prevUser,
+      goals: {
         ...prevUser.goals,
         ...goals
-      };
-      
-      const updatedUser = {
-        ...prevUser,
-        goals: updatedGoals
-      };
-      
-      // Save to AsyncStorage
-      AsyncStorage.setItem(STORAGE_KEYS.USER_GOALS, JSON.stringify(updatedGoals))
-        .catch(error => console.error('Error saving user goals:', error));
-      
-      return updatedUser;
-    });
+      }
+    }));
   };
 
   // Pet actions
@@ -511,7 +491,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const playWithPet = () => {
-    // Playing with the penguin helps cool it down
     setPet({
       ...pet,
       temperature: Math.max(pet.temperature - 5, 10),
@@ -677,7 +656,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     practiceSession,
     practiceProgress,
     studiedChapters,
-    signIn,
     signOut,
     completeSurvey,
     completeProfileSetup,
@@ -699,11 +677,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     updateStudiedChapters,
   };
 
-  if (isLoading) {
-    return null; // Or return a loading spinner
-  }
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+    </AppContext.Provider>
+  );
 };
 
 export const useAppContext = () => {

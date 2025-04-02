@@ -7,7 +7,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Platform,
   StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -39,14 +38,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const {
     user,
-    pet,
     studiedChapters,
     updateStudiedChapters,
-    signOut,
     practiceSession,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const questionsAnswered = practiceSession?.questionsAnswered || 0;
 
   useEffect(() => {
     // Simulate loading data
@@ -56,13 +53,6 @@ export default function HomeScreen() {
 
     return () => clearTimeout(timer);
   }, []);
-
-  // Update questions answered from practice session
-  useEffect(() => {
-    if (practiceSession) {
-      setQuestionsAnswered(practiceSession.questionsAnswered || 0);
-    }
-  }, [practiceSession]);
 
   const handleProfilePress = () => {
     router.push("/profile");
@@ -94,10 +84,6 @@ export default function HomeScreen() {
 
   const handleChapterSave = (savedChapters: string[]) => {
     updateStudiedChapters(savedChapters);
-  };
-
-  const handleSignOut = () => {
-    signOut();
   };
 
   if (isLoading) {
@@ -398,22 +384,14 @@ const styles = StyleSheet.create({
     borderTopColor: "rgba(0,0,0,0.05)",
   },
   practiceButton: {
-    backgroundColor: COLORS.black,
-    paddingVertical: 16,
+    backgroundColor: COLORS.accent,
     borderRadius: 12,
+    paddingVertical: 14,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   practiceButtonText: {
     color: COLORS.white,
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
   },
 });

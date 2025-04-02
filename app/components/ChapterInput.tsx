@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -94,6 +94,10 @@ const subjects = [
   },
 ];
 
+// Constants
+const TOTAL_GOAL = 5; // Example goal of 5 topics per day
+const QUESTIONS_GOAL = 20; // Example goal of 20 questions per day
+
 const ChapterInput = ({
   onSave = () => {},
   initialChapters = [],
@@ -101,9 +105,7 @@ const ChapterInput = ({
 }: ChapterInputProps) => {
   const [chapters, setChapters] = useState<string[]>(initialChapters);
   const [showModal, setShowModal] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState<
-    (typeof subjects)[0] | null
-  >(null);
+  const [selectedSubject, setSelectedSubject] = useState<(typeof subjects)[0] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalY] = useState(new Animated.Value(height));
 
@@ -119,17 +121,17 @@ const ChapterInput = ({
         useNativeDriver: true,
       }).start();
     }
-  }, [showModal]);
+  }, [showModal, modalY]);
 
-  const handleAddChapter = () => {
+  const handleAddChapter = useCallback(() => {
     setShowModal(true);
-  };
+  }, []);
 
-  const handleSubjectSelect = (subject: (typeof subjects)[0]) => {
+  const handleSubjectSelect = useCallback((subject: (typeof subjects)[0]) => {
     setSelectedSubject(subject);
-  };
+  }, []);
 
-  const handleChapterSelect = (chapter: string) => {
+  const handleChapterSelect = useCallback((chapter: string) => {
     if (!chapters.includes(chapter)) {
       const updatedChapters = [...chapters, chapter];
       setChapters(updatedChapters);
@@ -138,30 +140,49 @@ const ChapterInput = ({
     setShowModal(false);
     setSelectedSubject(null);
     setSearchQuery("");
-  };
+  }, [chapters, onSave]);
 
-  const handleRemoveChapter = (chapter: string) => {
+  const handleRemoveChapter = useCallback((chapter: string) => {
     const updatedChapters = chapters.filter((c) => c !== chapter);
     setChapters(updatedChapters);
     onSave(updatedChapters);
-  };
+  }, [chapters, onSave]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     setSelectedSubject(null);
     setSearchQuery("");
-  };
+  }, []);
 
-  const filteredChapters = selectedSubject?.chapters.filter((chapter) =>
-    chapter.toLowerCase().includes(searchQuery.toLowerCase()),
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+  }, []);
+
+  // Memoize filtered chapters
+  const filteredChapters = useMemo(() => 
+    selectedSubject?.chapters.filter((chapter) =>
+      chapter.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    [selectedSubject, searchQuery]
   );
 
-  // Calculate progress percentage for visualization
-  const totalGoal = 5; // Example goal of 5 topics per day
-  const progressPercentage = Math.min(100, (chapters.length / totalGoal) * 100);
+  // Calculate progress percentages
+  const progressPercentage = useMemo(() => 
+    Math.min(100, (chapters.length / TOTAL_GOAL) * 100),
+    [chapters.length]
+  );
   
-  // Calculate questions goal and progress
-  const questionsGoal = 20; // Example goal of 20 questions per day
-  const questionsPercentage = Math.min(100, (questionsCompleted / questionsGoal) * 100);
+  const questionsPercentage = useMemo(() => 
+    Math.min(100, (questionsCompleted / QUESTIONS_GOAL) * 100),
+    [questionsCompleted]
+  );
+
+  // Memoize the motivational message
+  const motivationalMessage = useMemo(() => 
+    chapters.length >= TOTAL_GOAL
+      ? "Amazing! You've hit your goal for today."
+      : `Add ${TOTAL_GOAL - chapters.length} more topic${TOTAL_GOAL - chapters.length !== 1 ? 's' : ''} to reach your daily goal.`,
+    [chapters.length]
+  );
 
   return (
     <View style={styles.container}>
@@ -176,7 +197,7 @@ const ChapterInput = ({
           <View style={styles.progressColumn}>
             <View style={styles.progressLabelRow}>
               <BookOpen size={14} color={COLORS.accent} />
-              <Text style={styles.progressLabel}>Topics: {chapters.length}/{totalGoal}</Text>
+              <Text style={styles.progressLabel}>Topics: {chapters.length}/{TOTAL_GOAL}</Text>
             </View>
             <View style={styles.progressBarContainer}>
               <View 
@@ -191,7 +212,7 @@ const ChapterInput = ({
           <View style={styles.progressColumn}>
             <View style={styles.progressLabelRow}>
               <Zap size={14} color="#F59E0B" />
-              <Text style={styles.progressLabel}>Questions: {questionsCompleted}/{questionsGoal}</Text>
+              <Text style={styles.progressLabel}>Questions: {questionsCompleted}/{QUESTIONS_GOAL}</Text>
             </View>
             <View style={styles.progressBarContainer}>
               <View 
@@ -250,11 +271,7 @@ const ChapterInput = ({
         {chapters.length > 0 && (
           <View style={styles.cardFooter}>
             <TrendingUp size={14} color={COLORS.accent} />
-            <Text style={styles.footerText}>
-              {chapters.length >= totalGoal 
-                ? "Amazing! You've hit your goal for today." 
-                : `Add ${totalGoal - chapters.length} more topic${totalGoal - chapters.length !== 1 ? 's' : ''} to reach your daily goal.`}
-            </Text>
+            <Text style={styles.footerText}>{motivationalMessage}</Text>
           </View>
         )}
       </View>
@@ -264,7 +281,7 @@ const ChapterInput = ({
         visible={showModal}
         transparent
         animationType="none"
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
           <Animated.View
@@ -292,7 +309,7 @@ const ChapterInput = ({
                 {selectedSubject ? selectedSubject.name : "Select Subject"}
               </Text>
               <TouchableOpacity
-                onPress={() => setShowModal(false)}
+                onPress={closeModal}
                 style={styles.closeButton}
               >
                 <X size={24} color="#6B7280" />
@@ -398,10 +415,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   progressLabel: {
+    marginLeft: 8,
     fontSize: 14,
+    color: "#374151",
     fontWeight: "500",
-    marginLeft: 6,
-    color: "#4B5563",
   },
   progressBarContainer: {
     height: 6,
@@ -414,8 +431,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   topicsSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    padding: 16,
+    paddingTop: 0,
   },
   topicsSectionHeader: {
     flexDirection: "row",
@@ -432,48 +449,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.accent,
-    paddingVertical: 6,
     paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 20,
   },
   addTopicText: {
-    fontSize: 12,
-    fontWeight: "500",
     color: COLORS.white,
+    fontSize: 12,
+    fontWeight: "600",
     marginLeft: 4,
   },
   topicsList: {
-    borderRadius: 8,
-    backgroundColor: "#F9FAFB",
-    padding: 12,
+    marginBottom: 8,
   },
   topicItem: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    justifyContent: "space-between",
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
   topicContent: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   topicIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   topicText: {
     fontSize: 14,
-    color: "#374151",
+    color: "#1F2937",
   },
   emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
     padding: 24,
+    alignItems: "center",
   },
   emptyStateText: {
-    fontSize: 14,
-    color: "#9CA3AF",
+    fontSize: 15,
+    color: "#6B7280",
     marginTop: 12,
     marginBottom: 16,
   },
@@ -481,50 +496,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.accent,
-    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
   emptyStateButtonText: {
+    color: COLORS.white,
     fontSize: 14,
-    fontWeight: "500",
-    color: "white",
+    fontWeight: "600",
     marginLeft: 8,
   },
   cardFooter: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 12,
     backgroundColor: COLORS.accentLight,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   footerText: {
-    fontSize: 12,
-    color: COLORS.accent,
+    marginLeft: 8,
+    fontSize: 13,
+    color: "#9F580A",
     fontWeight: "500",
-    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: height * 0.8,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    height: height * 0.8,
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   backButton: {
-    padding: 4,
+    padding: 8,
   },
   modalTitle: {
     fontSize: 18,
@@ -534,57 +550,36 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   closeButton: {
-    padding: 4,
+    padding: 8,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F9FAFB",
-    margin: 16,
-    borderRadius: 8,
+    marginHorizontal: 20,
+    marginBottom: 16,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
+    color: "#1F2937",
   },
   modalList: {
-    padding: 16,
+    paddingHorizontal: 20,
   },
   modalItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  subjectItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  subjectContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  subjectIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  subjectText: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1F2937",
+    borderBottomColor: "#F3F4F6",
   },
   modalItemText: {
     fontSize: 16,
@@ -595,6 +590,31 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
   },
+  subjectItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  subjectContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  subjectIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  subjectText: {
+    fontSize: 16,
+    color: "#1F2937",
+    fontWeight: "500",
+  },
 });
 
-export default ChapterInput;
+export default React.memo(ChapterInput);

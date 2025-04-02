@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Pressable } from "react-native";
 import { Zap, Flame, X, Trophy, Book, CheckCircle } from "lucide-react-native";
 
@@ -15,9 +15,13 @@ const UserStats = ({
 }: UserStatsProps) => {
   const [showXpTooltip, setShowXpTooltip] = useState(false);
 
-  const handleXpPress = () => {
+  const handleXpPress = useCallback(() => {
     setShowXpTooltip(true);
-  };
+  }, []);
+
+  const handleCloseTooltip = useCallback(() => {
+    setShowXpTooltip(false);
+  }, []);
 
   return (
     <>
@@ -43,11 +47,11 @@ const UserStats = ({
         visible={showXpTooltip}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowXpTooltip(false)}
+        onRequestClose={handleCloseTooltip}
       >
         <Pressable 
           style={styles.modalOverlay} 
-          onPress={() => setShowXpTooltip(false)}
+          onPress={handleCloseTooltip}
         >
           <View style={styles.tooltipContainer}>
             <View style={styles.tooltipHeader}>
@@ -55,7 +59,7 @@ const UserStats = ({
                 <Zap size={18} color="#FFB443" />
                 <Text style={styles.tooltipTitle}>How to Earn XP</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowXpTooltip(false)}>
+              <TouchableOpacity onPress={handleCloseTooltip}>
                 <X size={20} color="#6B7280" />
               </TouchableOpacity>
             </View>
@@ -189,4 +193,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserStats;
+export default React.memo(UserStats);
