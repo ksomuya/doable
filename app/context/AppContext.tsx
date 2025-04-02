@@ -13,6 +13,12 @@ type SurveyData = {
   dailyStudyTime: "1 hour" | "2-3 hours" | "4+ hours" | null;
 };
 
+type UserGoals = {
+  dailyQuestions: number;
+  weeklyTopics: number;
+  streak: number;
+};
+
 type UserData = {
   isAuthenticated: boolean;
   isOnboarded: boolean;
@@ -31,6 +37,7 @@ type UserData = {
   rank: number;
   dateOfBirth: Date | null;
   parentMobile: string;
+  goals: UserGoals;
 };
 
 type PetData = {
@@ -74,6 +81,8 @@ type AppContextType = {
   updateStreakGoal: (days: number) => void;
   updateNotificationPreference: (enabled: boolean) => void;
   isFirstPracticeSession: () => boolean;
+  // Goal actions
+  updateUserGoals: (goals: Partial<UserGoals>) => void;
   // Pet actions
   feedPet: () => void;
   playWithPet: () => void;
@@ -96,6 +105,12 @@ type AppContextType = {
   updateStudiedChapters: (chapters: string[]) => void;
 };
 
+const defaultGoals: UserGoals = {
+  dailyQuestions: 20,
+  weeklyTopics: 3,
+  streak: 7
+};
+
 const defaultUser: UserData = {
   isAuthenticated: false,
   isOnboarded: false,
@@ -114,6 +129,7 @@ const defaultUser: UserData = {
   rank: 5000,
   dateOfBirth: null,
   parentMobile: "",
+  goals: defaultGoals
 };
 
 const defaultPet: PetData = {
@@ -151,6 +167,7 @@ const STORAGE_KEYS = {
   PET_DATA: '@doable:pet_data',
   SURVEY_DATA: '@doable:survey_data',
   STUDIED_CHAPTERS: '@doable:studied_chapters',
+  USER_GOALS: '@doable:user_goals'
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -171,17 +188,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const loadPersistedData = async () => {
       try {
-        const [userData, petData, surveyData, chaptersData] = await Promise.all([
+        const [userData, petData, surveyData, chaptersData, goalsData] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.USER_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.PET_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.SURVEY_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.STUDIED_CHAPTERS),
+          AsyncStorage.getItem(STORAGE_KEYS.USER_GOALS),
         ]);
 
         if (userData) setUser({ ...defaultUser, ...JSON.parse(userData) });
         if (petData) setPet({ ...defaultPet, ...JSON.parse(petData) });
         if (surveyData) setSurveyData({ ...defaultSurveyData, ...JSON.parse(surveyData) });
         if (chaptersData) setStudiedChapters(JSON.parse(chaptersData));
+        if (goalsData) setUser(prevUser => ({
+          ...prevUser,
+          goals: JSON.parse(goalsData)
+        }));
       } catch (error) {
         console.error('Error loading persisted data:', error);
       } finally {
@@ -210,6 +232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           streakGoal: user.streakGoal,
           notificationsEnabled: user.notificationsEnabled,
           rank: user.rank,
+          goals: user.goals
         };
         await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(dataToSave));
       } catch (error) {
@@ -265,6 +288,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [studiedChapters]);
 
+  // Save goals when they change
+  useEffect(() => {
+    const saveGoals = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_GOALS, JSON.stringify(user.goals));
+      } catch (error) {
+        console.error('Error saving user goals:', error);
+      }
+    };
+
+    saveGoals();
+  }, [user.goals]);
+
   // Clear persisted data on sign out
   const clearPersistedData = async () => {
     try {
@@ -273,6 +309,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         AsyncStorage.removeItem(STORAGE_KEYS.PET_DATA),
         AsyncStorage.removeItem(STORAGE_KEYS.SURVEY_DATA),
         AsyncStorage.removeItem(STORAGE_KEYS.STUDIED_CHAPTERS),
+        AsyncStorage.removeItem(STORAGE_KEYS.USER_GOALS),
       ]);
     } catch (error) {
       console.error('Error clearing persisted data:', error);
@@ -401,6 +438,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   
   const isFirstPracticeSession = () => {
     return user.streakGoal === 0;
+  };
+
+  // Goal actions
+  const updateUserGoals = (goals: Partial<UserGoals>) => {
+    setUser(prevUser => {
+      const updatedGoals = {
+        ...prevUser.goals,
+        ...goals
+      };
+      
+      const updatedUser = {
+        ...prevUser,
+        goals: updatedGoals
+      };
+      
+      // Save to AsyncStorage
+      AsyncStorage.setItem(STORAGE_KEYS.USER_GOALS, JSON.stringify(updatedGoals))
+        .catch(error => console.error('Error saving user goals:', error));
+      
+      return updatedUser;
+    });
   };
 
   // Pet actions
@@ -554,6 +612,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     updateStreakGoal,
     updateNotificationPreference,
     isFirstPracticeSession,
+    updateUserGoals,
     feedPet,
     playWithPet,
     updatePetMood,

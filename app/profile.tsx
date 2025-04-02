@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Linking,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -28,17 +29,50 @@ import {
   Youtube,
   Facebook,
   ChevronRight,
+  Award,
+  BookOpen,
+  Calendar,
+  Target,
+  Flame,
+  Plus,
+  Minus,
 } from "lucide-react-native";
 import { useAppContext } from "./context/AppContext";
 import ProfileSetup from "./components/ProfileSetup";
 import { ProfileData } from "./components/ProfileSetup";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, signOut, completeProfileSetup } = useAppContext();
+  const { user, signOut, completeProfileSetup, updateUserGoals } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
   const [editNameModalVisible, setEditNameModalVisible] = useState(false);
   const [newName, setNewName] = useState(user.name);
+  const [editGoalsModalVisible, setEditGoalsModalVisible] = useState(false);
+  const [goalValues, setGoalValues] = useState({
+    dailyQuestions: user.goals?.dailyQuestions || 20,
+    weeklyTopics: user.goals?.weeklyTopics || 3,
+    streak: user.goals?.streak || 7,
+  });
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   const handleBackPress = () => {
     router.back();
@@ -54,6 +88,50 @@ export default function ProfileScreen() {
     // For now, we'll just close the modal
     setEditNameModalVisible(false);
     // Update would happen here
+  };
+  
+  const handleEditGoals = () => {
+    setGoalValues({
+      dailyQuestions: user.goals?.dailyQuestions || 20,
+      weeklyTopics: user.goals?.weeklyTopics || 3,
+      streak: user.goals?.streak || 7,
+    });
+    setEditGoalsModalVisible(true);
+  };
+  
+  const handleSaveGoals = () => {
+    updateUserGoals(goalValues);
+    setEditGoalsModalVisible(false);
+  };
+  
+  const increaseGoal = (type) => {
+    setGoalValues(prev => {
+      switch(type) {
+        case 'dailyQuestions':
+          return {...prev, dailyQuestions: Math.min(prev.dailyQuestions + 5, 100)};
+        case 'weeklyTopics':
+          return {...prev, weeklyTopics: Math.min(prev.weeklyTopics + 1, 10)};
+        case 'streak':
+          return {...prev, streak: Math.min(prev.streak + 1, 30)};
+        default:
+          return prev;
+      }
+    });
+  };
+  
+  const decreaseGoal = (type) => {
+    setGoalValues(prev => {
+      switch(type) {
+        case 'dailyQuestions':
+          return {...prev, dailyQuestions: Math.max(prev.dailyQuestions - 5, 5)};
+        case 'weeklyTopics':
+          return {...prev, weeklyTopics: Math.max(prev.weeklyTopics - 1, 1)};
+        case 'streak':
+          return {...prev, streak: Math.max(prev.streak - 1, 1)};
+        default:
+          return prev;
+      }
+    });
   };
 
   const navigateToSettings = (settingType: string) => {
@@ -106,6 +184,71 @@ export default function ProfileScreen() {
       </>
     );
   }
+  
+  const renderGoalsSection = () => {
+    return (
+      <Animated.View 
+        style={[
+          styles.section, 
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+          }
+        ]}
+      >
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Your Learning Goals</Text>
+          <TouchableOpacity 
+            style={styles.editButton} 
+            onPress={handleEditGoals}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.goalsContainer}>
+          <View style={styles.goalCard}>
+            <LinearGradient
+              colors={['#EEF2FF', '#E0E7FF']}
+              style={styles.goalCardGradient}
+            >
+              <View style={styles.goalIconContainer}>
+                <BookOpen size={24} color="#4F46E5" />
+              </View>
+              <Text style={styles.goalValue}>{user.goals?.dailyQuestions || 20}</Text>
+              <Text style={styles.goalLabel}>Daily Questions</Text>
+            </LinearGradient>
+          </View>
+          
+          <View style={styles.goalCard}>
+            <LinearGradient
+              colors={['#ECFDF5', '#D1FAE5']}
+              style={styles.goalCardGradient}
+            >
+              <View style={styles.goalIconContainer}>
+                <Target size={24} color="#10B981" />
+              </View>
+              <Text style={styles.goalValue}>{user.goals?.weeklyTopics || 3}</Text>
+              <Text style={styles.goalLabel}>Weekly Topics</Text>
+            </LinearGradient>
+          </View>
+          
+          <View style={styles.goalCard}>
+            <LinearGradient
+              colors={['#FEF2F2', '#FEE2E2']}
+              style={styles.goalCardGradient}
+            >
+              <View style={styles.goalIconContainer}>
+                <Flame size={24} color="#EF4444" />
+              </View>
+              <Text style={styles.goalValue}>{user.goals?.streak || 7}</Text>
+              <Text style={styles.goalLabel}>Streak Goal</Text>
+            </LinearGradient>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -128,7 +271,6 @@ export default function ProfileScreen() {
                 "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback",
             }}
             style={styles.profileImage}
-            contentFit="cover"
           />
           <View style={styles.nameContainer}>
             <Text style={styles.userName}>{user.name}</Text>
@@ -137,7 +279,28 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <Text style={styles.userEmail}>{user.email}</Text>
+          
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Award size={24} color="#F59E0B" />
+              <Text style={styles.statValue}>{user.level}</Text>
+              <Text style={styles.statLabel}>Level</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Flame size={24} color="#EF4444" />
+              <Text style={styles.statValue}>{user.streak}</Text>
+              <Text style={styles.statLabel}>Streak</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Target size={24} color="#10B981" />
+              <Text style={styles.statValue}>{user.xp}</Text>
+              <Text style={styles.statLabel}>XP</Text>
+            </View>
+          </View>
         </View>
+        
+        {/* Goals Section */}
+        {renderGoalsSection()}
 
         {/* Main Settings Buttons */}
         <View style={styles.section}>
@@ -319,6 +482,104 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+      
+      {/* Edit Goals Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editGoalsModalVisible}
+        onRequestClose={() => setEditGoalsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Learning Goals</Text>
+            
+            <View style={styles.goalEditItem}>
+              <View style={styles.goalEditHeader}>
+                <BookOpen size={20} color="#4F46E5" />
+                <Text style={styles.goalEditTitle}>Daily Questions</Text>
+              </View>
+              <View style={styles.goalEditControls}>
+                <TouchableOpacity 
+                  style={styles.goalControlButton}
+                  onPress={() => decreaseGoal('dailyQuestions')}
+                >
+                  <Minus size={20} color="#4B5563" />
+                </TouchableOpacity>
+                <Text style={styles.goalEditValue}>{goalValues.dailyQuestions}</Text>
+                <TouchableOpacity 
+                  style={styles.goalControlButton}
+                  onPress={() => increaseGoal('dailyQuestions')}
+                >
+                  <Plus size={20} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <View style={styles.goalEditItem}>
+              <View style={styles.goalEditHeader}>
+                <Target size={20} color="#10B981" />
+                <Text style={styles.goalEditTitle}>Weekly Topics</Text>
+              </View>
+              <View style={styles.goalEditControls}>
+                <TouchableOpacity 
+                  style={styles.goalControlButton}
+                  onPress={() => decreaseGoal('weeklyTopics')}
+                >
+                  <Minus size={20} color="#4B5563" />
+                </TouchableOpacity>
+                <Text style={styles.goalEditValue}>{goalValues.weeklyTopics}</Text>
+                <TouchableOpacity 
+                  style={styles.goalControlButton}
+                  onPress={() => increaseGoal('weeklyTopics')}
+                >
+                  <Plus size={20} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <View style={styles.goalEditItem}>
+              <View style={styles.goalEditHeader}>
+                <Flame size={20} color="#EF4444" />
+                <Text style={styles.goalEditTitle}>Streak Goal</Text>
+              </View>
+              <View style={styles.goalEditControls}>
+                <TouchableOpacity 
+                  style={styles.goalControlButton}
+                  onPress={() => decreaseGoal('streak')}
+                >
+                  <Minus size={20} color="#4B5563" />
+                </TouchableOpacity>
+                <Text style={styles.goalEditValue}>{goalValues.streak} days</Text>
+                <TouchableOpacity 
+                  style={styles.goalControlButton}
+                  onPress={() => increaseGoal('streak')}
+                >
+                  <Plus size={20} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setEditGoalsModalVisible(false)}
+              >
+                <X size={20} color="#4B5563" />
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveGoals}
+              >
+                <Check size={20} color="#FFF" />
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -413,17 +674,100 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginBottom: 16,
   },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    paddingHorizontal: 10,
+    marginTop: 10,
+  },
+  statItem: {
+    alignItems: "center",
+    paddingHorizontal: 15,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginTop: 5,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginTop: 2,
+  },
   section: {
     paddingVertical: 20,
     paddingHorizontal: 20,
     borderBottomWidth: 8,
     borderBottomColor: "#F3F4F6",
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 16,
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 20,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#4F46E5",
+  },
+  goalsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  goalCard: {
+    flex: 1,
+    marginHorizontal: 5,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 2,
+  },
+  goalCardGradient: {
+    padding: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    height: 120,
+  },
+  goalIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  goalValue: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 4,
+  },
+  goalLabel: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#4B5563",
+    textAlign: "center",
   },
   sectionSubtitle: {
     fontSize: 14,
@@ -492,7 +836,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalContent: {
-    width: "80%",
+    width: "90%",
     backgroundColor: "white",
     borderRadius: 16,
     padding: 24,
@@ -520,9 +864,46 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 24,
   },
+  goalEditItem: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    paddingBottom: 16,
+  },
+  goalEditHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  goalEditTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 10,
+  },
+  goalEditControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+  goalControlButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  goalEditValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
   modalButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginTop: 10,
   },
   modalButton: {
     flexDirection: "row",
