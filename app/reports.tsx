@@ -28,6 +28,9 @@ import {
   Star,
   Trophy,
   Repeat,
+  Brain,
+  BookOpenCheck,
+  Sword,
 } from "lucide-react-native";
 import { useAppContext } from "./context/AppContext";
 import { LinearGradient } from "expo-linear-gradient";
@@ -148,14 +151,21 @@ export default function ReportsScreen() {
       },
     ];
 
-    // Calculate study time distribution
+    // Calculate study time distribution with learning stages instead of breaks
     const totalMinutes = dailyData.studyTime * 60;
     const sessionsTimeSum = dailyData.sessions.reduce((sum, session) => sum + session.duration, 0);
-    const breakTime = Math.max(0, totalMinutes - sessionsTimeSum);
+    
+    // Split the learning time into three stages
+    const refineTime = Math.round(sessionsTimeSum * 0.3); // 30% for refining concepts
+    const recallTime = Math.round(sessionsTimeSum * 0.4); // 40% for active recall
+    const conquerTime = Math.round(sessionsTimeSum * 0.3); // 30% for mastery/conquer
+    
     const timeDistribution = [
-      { label: "Active Learning", value: sessionsTimeSum, color: "#4F46E5" },
-      { label: "Breaks", value: breakTime, color: "#F59E0B" },
+      { label: "Refine", value: refineTime, color: "#4F46E5", icon: <Brain size={14} color="#4F46E5" /> },
+      { label: "Recall", value: recallTime, color: "#8B5CF6", icon: <BookOpenCheck size={14} color="#8B5CF6" /> },
+      { label: "Conquer", value: conquerTime, color: "#F59E0B", icon: <Sword size={14} color="#F59E0B" /> },
     ];
+    
     const maxBarWidth = Dimensions.get("window").width - 120;
 
     return (
@@ -176,7 +186,7 @@ export default function ReportsScreen() {
             <Calendar size={16} color="#FFF" />
             <Text style={styles.dateTextEnhanced}>{dailyData.date}</Text>
           </LinearGradient>
-              </View>
+        </View>
 
         {/* Performance Score Card */}
         <View style={styles.scoreCard}>
@@ -188,8 +198,8 @@ export default function ReportsScreen() {
               <Text style={styles.scoreTitle}>Today's Performance</Text>
               <View style={[styles.gradeBadge, { backgroundColor: gradeColor }]}>
                 <Text style={styles.gradeText}>{grade}</Text>
+              </View>
             </View>
-          </View>
             
             <View style={styles.scoreContent}>
               <View style={styles.scoreCircle}>
@@ -201,32 +211,32 @@ export default function ReportsScreen() {
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <BookOpen size={16} color="#3B82F6" />
-            </View>
+                  </View>
                   <View>
                     <Text style={styles.metricValue}>{dailyData.totalQuestions}</Text>
                     <Text style={styles.metricLabel}>Questions</Text>
-          </View>
-              </View>
+                  </View>
+                </View>
                 
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <Check size={16} color="#10B981" />
-            </View>
+                  </View>
                   <View>
                     <Text style={styles.metricValue}>{dailyData.correctAnswers}</Text>
                     <Text style={styles.metricLabel}>Correct</Text>
-          </View>
-              </View>
+                  </View>
+                </View>
                 
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <Clock size={16} color="#8B5CF6" />
-            </View>
+                  </View>
                   <View>
                     <Text style={styles.metricValue}>{dailyData.averageTime}s</Text>
                     <Text style={styles.metricLabel}>Avg Time</Text>
-          </View>
-        </View>
+                  </View>
+                </View>
                 
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
@@ -240,7 +250,35 @@ export default function ReportsScreen() {
               </View>
             </View>
           </LinearGradient>
-      </View>
+        </View>
+
+        {/* Study Time Distribution */}
+        <View style={styles.distributionCard}>
+          <Text style={styles.distributionTitle}>Learning Journey Distribution</Text>
+          {timeDistribution.map((item, index) => (
+            <View key={index} style={styles.distributionItem}>
+              <View style={styles.distributionLabelContainer}>
+                <View style={[styles.distributionColorDot, { backgroundColor: item.color }]} />
+                <View style={styles.distributionLabelIconContainer}>
+                  {item.icon}
+                  <Text style={styles.distributionLabel}>{item.label}</Text>
+                </View>
+                <Text style={styles.distributionValue}>{item.value} min</Text>
+              </View>
+              <View style={styles.distributionBarContainer}>
+                <View
+                  style={[
+                    styles.distributionBar, 
+                    { 
+                      width: (item.value / totalMinutes) * maxBarWidth,
+                      backgroundColor: item.color
+                    }
+                  ]} 
+                />
+              </View>
+            </View>
+          ))}
+        </View>
 
         {/* Insights Card */}
         <View style={styles.insightsCard}>
@@ -253,37 +291,12 @@ export default function ReportsScreen() {
           ))}
         </View>
 
-        {/* Study Time Distribution */}
-        <View style={styles.distributionCard}>
-          <Text style={styles.distributionTitle}>Study Time Distribution</Text>
-          {timeDistribution.map((item, index) => (
-            <View key={index} style={styles.distributionItem}>
-              <View style={styles.distributionLabelContainer}>
-                <View style={[styles.distributionColorDot, { backgroundColor: item.color }]} />
-                <Text style={styles.distributionLabel}>{item.label}</Text>
-                <Text style={styles.distributionValue}>{item.value} min</Text>
-              </View>
-              <View style={styles.distributionBarContainer}>
-              <View
-                  style={[
-                    styles.distributionBar, 
-                    { 
-                      width: (item.value / totalMinutes) * maxBarWidth,
-                      backgroundColor: item.color
-                    }
-                  ]} 
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-
         {/* Today's Study Sessions - Enhanced */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderEnhanced}>
             <Text style={styles.sectionTitleEnhanced}>Study Sessions</Text>
             <Text style={styles.sectionSubtitle}>{dailyData.sessions.length} sessions today</Text>
-            </View>
+          </View>
           
           {dailyData.sessions.map((session, index) => (
             <View key={index} style={styles.sessionCardEnhanced}>
@@ -503,7 +516,7 @@ export default function ReportsScreen() {
             {weeklyData.dailyBreakdown.map((day, index) => (
               <View key={index} style={styles.chartColumnEnhanced}>
                 <View style={styles.barContainerEnhanced}>
-              <View
+                  <View
                     style={[
                       styles.accuracyBarEnhanced, 
                       { 
@@ -526,21 +539,21 @@ export default function ReportsScreen() {
                         minHeight: 10,
                       }
                     ]}
-              />
-            </View>
+                  />
+                </View>
                 <Text style={styles.chartLabelEnhanced}>{day.day}</Text>
                 <Text style={styles.chartValueEnhanced}>{day.accuracy}%</Text>
+              </View>
+            ))}
           </View>
-        ))}
-          </View>
-      </View>
+        </View>
 
         {/* Weak Topics - Enhanced */}
         <View style={styles.topicsCardEnhanced}>
           <View style={styles.topicsHeaderEnhanced}>
             <AlertTriangle size={20} color="#EF4444" />
             <Text style={styles.topicsTitle}>Areas for Improvement</Text>
-              </View>
+          </View>
           
           {weeklyData.weakTopics.map((topic, index) => (
             <View key={index} style={styles.topicItemEnhanced}>
@@ -548,8 +561,8 @@ export default function ReportsScreen() {
                 <Text style={styles.topicNameEnhanced}>{topic.name}</Text>
                 <View style={[styles.topicBadgeEnhanced, { backgroundColor: "#FEE2E2", borderColor: "#EF4444" }]}>
                   <Text style={[styles.topicBadgeTextEnhanced, { color: "#EF4444" }]}>{topic.accuracy}%</Text>
+                </View>
               </View>
-            </View>
               
               <View style={styles.topicProgressContainer}>
                 <View style={styles.topicProgressBackground}>
@@ -562,12 +575,12 @@ export default function ReportsScreen() {
                       { width: `${topic.accuracy}%` }
                     ]} 
                   />
-      </View>
+                </View>
                 
                 <View style={styles.topicProgressMarkersContainer}>
                   <View style={[styles.topicProgressMarker, { left: '70%' }]}>
                     <Text style={styles.topicProgressMarkerText}>70%</Text>
-    </View>
+                  </View>
                   <View style={[styles.topicProgressMarker, { left: '85%' }]}>
                     <Text style={styles.topicProgressMarkerText}>85%</Text>
                   </View>
@@ -582,14 +595,14 @@ export default function ReportsScreen() {
               </View>
             </View>
           ))}
-          </View>
+        </View>
 
         {/* Strong Topics - Enhanced */}
         <View style={styles.topicsCardEnhanced}>
           <View style={styles.topicsHeaderEnhanced}>
             <Trophy size={20} color="#10B981" />
             <Text style={styles.topicsTitle}>Strong Areas</Text>
-              </View>
+          </View>
           
           {weeklyData.strongTopics.map((topic, index) => (
             <View key={index} style={styles.topicItemEnhanced}>
@@ -597,8 +610,8 @@ export default function ReportsScreen() {
                 <Text style={styles.topicNameEnhanced}>{topic.name}</Text>
                 <View style={[styles.topicBadgeEnhanced, { backgroundColor: "#D1FAE5", borderColor: "#10B981" }]}>
                   <Text style={[styles.topicBadgeTextEnhanced, { color: "#10B981" }]}>{topic.accuracy}%</Text>
-            </View>
-          </View>
+                </View>
+              </View>
               
               <View style={styles.topicProgressContainer}>
                 <View style={styles.topicProgressBackground}>
@@ -611,27 +624,27 @@ export default function ReportsScreen() {
                       { width: `${topic.accuracy}%` }
                     ]} 
                   />
-              </View>
+                </View>
                 
                 <View style={styles.topicProgressMarkersContainer}>
                   <View style={[styles.topicProgressMarker, { left: '70%' }]}>
                     <Text style={styles.topicProgressMarkerText}>70%</Text>
-            </View>
+                  </View>
                   <View style={[styles.topicProgressMarker, { left: '85%' }]}>
                     <Text style={styles.topicProgressMarkerText}>85%</Text>
-          </View>
+                  </View>
+                </View>
               </View>
-            </View>
               
               <View style={styles.topicActionContainer}>
                 <TouchableOpacity style={styles.topicActionButton}>
                   <Text style={styles.topicActionText}>Review Material</Text>
                   <ChevronRight size={16} color="#4F46E5" />
                 </TouchableOpacity>
-          </View>
-        </View>
+              </View>
+            </View>
           ))}
-      </View>
+        </View>
       </Animated.View>
     );
   };
@@ -656,41 +669,6 @@ export default function ReportsScreen() {
       ]).start();
     }, []);
 
-    // Calculate monthly performance metrics
-    const monthlyAccuracy = Math.round((monthlyData.correctAnswers / monthlyData.totalQuestions) * 100);
-    const monthlyGrade = monthlyAccuracy >= 90 ? 'A' : monthlyAccuracy >= 80 ? 'B' : monthlyAccuracy >= 70 ? 'C' : monthlyAccuracy >= 60 ? 'D' : 'F';
-    const monthlyGradeColor = monthlyAccuracy >= 90 ? "#10B981" : monthlyAccuracy >= 80 ? "#3B82F6" : monthlyAccuracy >= 70 ? "#F59E0B" : monthlyAccuracy >= 60 ? "#F97316" : "#EF4444";
-    
-    // Calculate questions per day on average
-    const daysInMonth = 30; // Approximate
-    const questionsPerDay = (monthlyData.totalQuestions / daysInMonth).toFixed(1);
-    
-    // Find best and worst week
-    const bestWeek = [...monthlyData.weeklyBreakdown].sort((a, b) => b.accuracy - a.accuracy)[0];
-    const worstWeek = [...monthlyData.weeklyBreakdown].sort((a, b) => a.accuracy - b.accuracy)[0];
-    
-    // Calculate trend between first and last week
-    const firstWeekAccuracy = monthlyData.weeklyBreakdown[0].accuracy;
-    const lastWeekAccuracy = monthlyData.weeklyBreakdown[monthlyData.weeklyBreakdown.length - 1].accuracy;
-    const overallTrend = lastWeekAccuracy > firstWeekAccuracy ? "improved" : "declined";
-    const trendPercentage = Math.abs(lastWeekAccuracy - firstWeekAccuracy);
-    
-    // Monthly insights
-    const monthlyInsights = [
-      {
-        icon: <TrendingUp size={18} color={overallTrend === "improved" ? "#10B981" : "#EF4444"} />,
-        text: `Your performance has ${overallTrend} by ${trendPercentage}% from the start of the month.`,
-      },
-      {
-        icon: <Trophy size={18} color="#F59E0B" />,
-        text: `Your strongest week was ${bestWeek.week} with ${bestWeek.accuracy}% accuracy.`,
-      },
-      {
-        icon: <Target size={18} color="#3B82F6" />,
-        text: `You averaged ${questionsPerDay} questions per day this month.`,
-      },
-    ];
-
     return (
       <Animated.View 
         style={[
@@ -698,236 +676,8 @@ export default function ReportsScreen() {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}
       >
-        {/* Month Display */}
-        <View style={styles.dateContainer}>
-          <LinearGradient
-            colors={['#4F46E5', '#818CF8']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.dateBadge}
-          >
-            <Calendar size={16} color="#FFF" />
-            <Text style={styles.dateTextEnhanced}>{monthlyData.month}</Text>
-          </LinearGradient>
-          </View>
-
-        {/* Monthly Performance Overview */}
-        <View style={styles.scoreCard}>
-          <LinearGradient
-            colors={['#F9FAFB', '#F3F4F6']}
-            style={styles.scoreCardGradient}
-          >
-            <View style={styles.scoreHeader}>
-              <Text style={styles.scoreTitle}>Monthly Overview</Text>
-              <View style={[styles.gradeBadge, { backgroundColor: monthlyGradeColor }]}>
-                <Text style={styles.gradeText}>{monthlyGrade}</Text>
-        </View>
-          </View>
-            
-            <View style={styles.scoreContent}>
-              <View style={styles.scoreCircle}>
-                <Text style={styles.scorePercentage}>{monthlyAccuracy}%</Text>
-                <Text style={styles.scoreLabel}>Accuracy</Text>
-              </View>
-              
-              <View style={styles.scoreMetrics}>
-                <View style={styles.scoreMetricItem}>
-                  <View style={styles.metricIconContainer}>
-                    <BookOpen size={16} color="#3B82F6" />
-                  </View>
-                  <View>
-                    <Text style={styles.metricValue}>{monthlyData.totalQuestions}</Text>
-                    <Text style={styles.metricLabel}>Questions</Text>
-        </View>
-      </View>
-
-                <View style={styles.scoreMetricItem}>
-                  <View style={styles.metricIconContainer}>
-                    <Zap size={16} color="#8B5CF6" />
-                  </View>
-      <View>
-                    <Text style={styles.metricValue}>{monthlyData.longestStreak}</Text>
-                    <Text style={styles.metricLabel}>Longest Streak</Text>
-        </View>
-                </View>
-                
-                <View style={styles.scoreMetricItem}>
-                  <View style={styles.metricIconContainer}>
-                    <Clock size={16} color="#F97316" />
-                  </View>
-                  <View>
-                    <Text style={styles.metricValue}>{monthlyData.studyTime}h</Text>
-                    <Text style={styles.metricLabel}>Study Time</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.scoreMetricItem}>
-                  <View style={styles.metricIconContainer}>
-                    <Award size={16} color="#F59E0B" />
-                  </View>
-                  <View>
-                    <Text style={styles.metricValue}>+{monthlyData.improvement}%</Text>
-                    <Text style={styles.metricLabel}>Improvement</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Progress Card */}
-        <View style={styles.monthlyProgressCard}>
-          <View style={styles.monthlyProgressHeader}>
-            <View style={styles.monthlyProgressIcon}>
-              <TrendingUp size={24} color="#4F46E5" />
-            </View>
-            <View>
-              <Text style={styles.monthlyProgressTitle}>Your Progress</Text>
-              <Text style={styles.monthlyProgressSubtitle}>
-                {overallTrend === "improved" ? "Keep it up!" : "Room for improvement"}
-          </Text>
-        </View>
-          </View>
-          
-          <View style={styles.monthlyProgressValue}>
-            <Text style={[
-              styles.monthlyProgressPercentage,
-              { color: overallTrend === "improved" ? "#10B981" : "#EF4444" }
-            ]}>
-              {overallTrend === "improved" ? "+" : "-"}{trendPercentage}%
-          </Text>
-            <Text style={styles.monthlyProgressDescription}>
-              {overallTrend === "improved" 
-                ? "Your performance has improved compared to last month" 
-                : "Your performance has declined compared to last month"}
-          </Text>
-        </View>
-          
-          <Image 
-            source={{ 
-              uri: overallTrend === "improved" 
-                ? "https://cdn3d.iconscout.com/3d/premium/thumb/increase-business-growth-5626315-4699372.png" 
-                : "https://cdn3d.iconscout.com/3d/premium/thumb/business-loss-5600739-4686609.png" 
-            }} 
-            style={styles.progressImage} 
-          />
-      </View>
-
-        {/* Monthly Insights */}
-        <View style={styles.insightsCard}>
-          <Text style={styles.insightsTitle}>Monthly Insights</Text>
-          {monthlyInsights.map((insight, index) => (
-            <View key={index} style={styles.insightItem}>
-              <View style={styles.insightIcon}>{insight.icon}</View>
-              <Text style={styles.insightText}>{insight.text}</Text>
-    </View>
-          ))}
-        </View>
-
-        {/* Weekly Breakdown - Enhanced */}
-        <View style={styles.monthlyBreakdownCard}>
-          <Text style={styles.monthlyBreakdownTitle}>Weekly Performance</Text>
-          
-          {monthlyData.weeklyBreakdown.map((week, index) => (
-            <View key={index} style={styles.weekItemEnhanced}>
-              <View style={styles.weekHeaderEnhanced}>
-                <View style={styles.weekLabelContainer}>
-                  <Calendar size={14} color="#4B5563" />
-                  <Text style={styles.weekNameEnhanced}>{week.week}</Text>
-                </View>
-                <View style={styles.weekStatsContainer}>
-                  <Text style={styles.weekQuestionsEnhanced}>{week.questions}</Text>
-                  <Text style={styles.weekStatsEnhanced}>questions</Text>
-                </View>
-              </View>
-              
-              <View style={styles.weekProgressContainer}>
-                <View style={styles.weekProgressBackground}>
-                  <LinearGradient
-                    colors={week.accuracy >= 80 ? ['#10B981', '#D1FAE5'] : week.accuracy >= 70 ? ['#F59E0B', '#FEF3C7'] : ['#EF4444', '#FEE2E2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[
-                      styles.weekProgressFill, 
-                      { width: `${week.accuracy}%` }
-                    ]} 
-                  />
-                </View>
-                
-                <View style={styles.weekProgressLabelsContainer}>
-                  <Text style={styles.weekProgressAccuracy}>{week.accuracy}%</Text>
-                  <Text style={styles.weekProgressLabel}>accuracy</Text>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Topic Analysis - Enhanced */}
-        <View style={styles.monthlyTopicsCard}>
-          <Text style={styles.monthlyTopicsTitle}>Subject Analysis</Text>
-          
-          <View style={styles.monthlyTopicsColumns}>
-            <View style={styles.monthlyTopicsColumn}>
-              <LinearGradient
-                colors={['#FEE2E2', '#FFF']}
-                style={styles.monthlyTopicColumnHeader}
-              >
-                <AlertTriangle size={16} color="#EF4444" />
-                <Text style={styles.monthlyTopicColumnTitle}>Needs Improvement</Text>
-              </LinearGradient>
-              
-              {monthlyData.weakTopics.map((topic, index) => (
-                <View key={index} style={styles.monthlyTopicItem}>
-                  <Text style={styles.monthlyTopicName} numberOfLines={1}>{topic.name}</Text>
-                  <Text style={[styles.monthlyTopicAccuracy, { color: "#EF4444" }]}>{topic.accuracy}%</Text>
-                </View>
-              ))}
-            </View>
-            
-            <View style={styles.monthlyTopicsColumn}>
-              <LinearGradient
-                colors={['#D1FAE5', '#FFF']}
-                style={styles.monthlyTopicColumnHeader}
-              >
-                <Trophy size={16} color="#10B981" />
-                <Text style={styles.monthlyTopicColumnTitle}>Strong Subjects</Text>
-              </LinearGradient>
-              
-              {monthlyData.strongTopics.map((topic, index) => (
-                <View key={index} style={styles.monthlyTopicItem}>
-                  <Text style={styles.monthlyTopicName} numberOfLines={1}>{topic.name}</Text>
-                  <Text style={[styles.monthlyTopicAccuracy, { color: "#10B981" }]}>{topic.accuracy}%</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        {/* Recommendation Card */}
-        <View style={styles.recommendationCard}>
-          <LinearGradient
-            colors={['#EEF2FF', '#FFFFFF']}
-            style={styles.recommendationGradient}
-          >
-            <View style={styles.recommendationHeader}>
-              <Info size={24} color="#4F46E5" />
-              <Text style={styles.recommendationTitle}>Study Recommendations</Text>
-            </View>
-            
-            <Text style={styles.recommendationText}>
-              Based on your monthly data, we recommend focusing more on:{' '}
-              <Text style={styles.recommendationHighlight}>{monthlyData.weakTopics[0].name}</Text>.
-              Your consistency has been {monthlyData.longestStreak > 14 ? 'excellent' : 'good'}, but you can improve by studying{' '}
-              <Text style={styles.recommendationHighlight}>{worstWeek.week.toLowerCase()}</Text> more.
-            </Text>
-            
-            <TouchableOpacity style={styles.recommendationButton}>
-              <Text style={styles.recommendationButtonText}>View Detailed Plan</Text>
-              <ChevronRight size={18} color="#FFF" />
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+        {/* Monthly Report */}
+        <Text>Monthly Report Content</Text>
       </Animated.View>
     );
   };
@@ -943,7 +693,7 @@ export default function ReportsScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Tab Navigation */}
+      {/* Tab Navigation - Simplified */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           onPress={() => setActiveTab("daily")}
@@ -1337,7 +1087,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   scoreCardGradient: {
-    borderRadius: 16,
     padding: 16,
   },
   scoreHeader: {
@@ -1347,7 +1096,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   scoreTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
     color: "#1F2937",
   },
@@ -1366,53 +1115,51 @@ const styles = StyleSheet.create({
   scoreContent: {
     flexDirection: "row",
     alignItems: "center",
+    marginTop: 8,
   },
   scoreCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#4F46E5",
-    alignItems: "center",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#EEF2FF",
     justifyContent: "center",
+    alignItems: "center",
     marginRight: 16,
   },
   scorePercentage: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: "700",
-    color: "white",
+    color: "#4F46E5",
   },
   scoreLabel: {
     fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
+    color: "#6B7280",
+    marginTop: 2,
   },
   scoreMetrics: {
     flex: 1,
     flexWrap: "wrap",
     flexDirection: "row",
+    justifyContent: "space-between",
   },
   scoreMetricItem: {
-    width: "50%",
+    width: "48%",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   metricIconContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "white",
-    alignItems: "center",
+    backgroundColor: "#F3F4F6",
     justifyContent: "center",
+    alignItems: "center",
     marginRight: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
   },
   metricValue: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     color: "#1F2937",
   },
   metricLabel: {
@@ -1457,35 +1204,46 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   distributionCard: {
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "white",
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
   },
   distributionTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
-    marginBottom: 12,
+    marginBottom: 16,
   },
   distributionItem: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   distributionLabelContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  distributionLabelIconContainer: {
+    flexDirection: "row", 
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 8,
   },
   distributionColorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   distributionLabel: {
-    flex: 1,
     fontSize: 14,
     color: "#4B5563",
+    marginLeft: 6,
   },
   distributionValue: {
     fontSize: 14,
@@ -1494,7 +1252,7 @@ const styles = StyleSheet.create({
   },
   distributionBarContainer: {
     height: 8,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#F3F4F6",
     borderRadius: 4,
     overflow: "hidden",
   },
@@ -1630,6 +1388,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     height: 200,
+    marginTop: 16,
   },
   chartColumnEnhanced: {
     alignItems: "center",
@@ -1645,11 +1404,13 @@ const styles = StyleSheet.create({
   },
   accuracyBarEnhanced: {
     width: "60%",
-    borderRadius: 12,
+    borderRadius: 8,
   },
   questionsIndicatorEnhanced: {
     position: "absolute",
-    borderRadius: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: "#F97316",
     left: "50%",
     transform: [{ translateX: -8 }],
