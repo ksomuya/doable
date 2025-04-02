@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -6,10 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Animated,
+  Dimensions,
+  StatusBar,
+  Platform,
 } from "react-native";
-import { ArrowLeft, Flag, Bookmark } from "lucide-react-native";
+import { ArrowLeft, Flag, Bookmark, CheckCircle, Clock, Award, Zap, ChevronRight, HelpCircle, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAppContext } from "../context/AppContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 import QuestionDisplay from "../components/QuestionDisplay";
 import AnswerOptions from "../components/AnswerOptions";
@@ -23,7 +28,12 @@ type QuestionDifficulty = "Easy" | "Medium" | "Hard";
 
 const QuestionScreen = () => {
   const { subject, goal, xp, type } = useLocalSearchParams();
-  const { user, updatePracticeProgress, isFirstPracticeSession } = useAppContext();
+  const { user, updatePracticeProgress, isFirstPracticeSession, practiceProgress } = useAppContext();
+
+  // Animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const [currentXP, setCurrentXP] = useState(0);
   const [goalXP, setGoalXP] = useState(parseInt(xp as string) || 200);
@@ -38,12 +48,55 @@ const QuestionScreen = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [timeSpent, setTimeSpent] = useState(0);
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+  const [timerStart, setTimerStart] = useState(Date.now());
+
+  // Screen width for responsive styling
+  const screenWidth = Dimensions.get('window').width;
 
   // Reset selected answer when question changes
   useEffect(() => {
     setSelectedAnswer(null);
     setAttemptCount(0);
+    
+    // Reset timer for new question
+    setTimerStart(Date.now());
+    if (timer) clearInterval(timer);
+    
+    const newTimer = setInterval(() => {
+      setTimeSpent(Math.floor((Date.now() - timerStart) / 1000));
+    }, 1000);
+    
+    setTimer(newTimer);
+    
+    // Start animations
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [currentQuestionIndex]);
+
+  // Animate progress bar when XP changes
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: currentXP / goalXP,
+      duration: 500,
+      useNativeDriver: false,
+    }).start();
+  }, [currentXP, goalXP]);
 
   // Mock questions data - in a real app, this would come from an API or database
   const questions = [
@@ -114,13 +167,16 @@ const QuestionScreen = () => {
   // Handle answer selection
   const handleAnswerSelected = (optionId: string) => {
     setSelectedAnswer(optionId);
-    
-    // Don't increment attempt count or set questions answered until the answer is checked
-    // These will happen when the feedback modal is shown
   };
   
   // Handle check answer
-  const handleCheckAnswer = (optionId: string, isCorrect: boolean) => {
+  const handleCheckAnswer = () => {
+    if (!selectedAnswer) return;
+    
+    const isCorrect = currentQuestion.options.find(
+      (option) => option.id === selectedAnswer
+    )?.isCorrect || false;
+    
     setAttemptCount((prev) => prev + 1);
     setQuestionsAnswered((prev) => prev + 1);
     
@@ -128,6 +184,9 @@ const QuestionScreen = () => {
     
     // Show feedback modal
     setShowFeedbackModal(true);
+    
+    // Calculate time spent on this question
+    const questionTimeSpent = Math.floor((Date.now() - timerStart) / 1000);
     
     // Update XP and streak
     if (isCorrect) {
@@ -139,7 +198,7 @@ const QuestionScreen = () => {
       setCorrectAnswers((prev) => prev + 1);
       
       // Update practice progress in context
-      updatePracticeProgress(xpEarned, true, 30); // 30 seconds is a placeholder for time spent
+      updatePracticeProgress(xpEarned, true, questionTimeSpent);
     } else {
       // Award some XP for attempting
       const xpEarned = 5;
@@ -147,7 +206,7 @@ const QuestionScreen = () => {
       setStreak(0); // Reset streak on wrong answer
       
       // Update practice progress in context
-      updatePracticeProgress(xpEarned, false, 30);
+      updatePracticeProgress(xpEarned, false, questionTimeSpent);
     }
     
     // Hide streak indicator after a delay
@@ -175,6 +234,10 @@ const QuestionScreen = () => {
     if (currentXP >= goalXP) {
       navigateToSummary();
     } else {
+      // Reset animations for next question
+      fadeAnim.setValue(0);
+      slideAnim.setValue(20);
+      
       // Load next question
       setCurrentQuestionIndex((prev) => (prev + 1) % questions.length);
     }
@@ -238,186 +301,413 @@ const QuestionScreen = () => {
     }
   };
 
+  // Format the time for display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.wrapper}>
-        {/* Header with back button */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
-            <ArrowLeft size={22} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Practice Session</Text>
-          <View style={styles.headerActions}>
-            <BookmarkButton
-              questionId={currentQuestion.id}
-              isBookmarked={bookmarkedQuestions.includes(currentQuestion.id)}
-              onToggleBookmark={handleToggleBookmark}
-            />
-            <TouchableOpacity
-              style={styles.reportButton}
-              onPress={() => setShowReportModal(true)}
-            >
-              <Flag size={20} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Progress bar */}
-        <View style={styles.progressContainer}>
-          <ProgressBar
-            currentXP={currentXP}
-            goalXP={goalXP}
-            color="#4F46E5"
-            height={8}
-            showLabel={true}
-          />
-        </View>
-
-        {/* Streak Indicator */}
-        <StreakIndicator streak={streak} visible={showStreakIndicator} />
-
-        <ScrollView style={styles.content}>
-          <View style={styles.topSpacing} />
-          {/* Question display */}
-          <QuestionDisplay
-            questionNumber={currentQuestionIndex + 1}
-            totalQuestions={Math.ceil(goalXP / 25)}
-            questionText={currentQuestion.questionText}
-            difficultyLevel={currentQuestion.difficultyLevel}
-            timeRemaining={currentQuestion.timeRemaining}
-            subject={currentQuestion.subject}
-            topic={currentQuestion.topic}
-          />
-
-          {/* Answer options */}
-          <View style={styles.answerContainer}>
-            <AnswerOptions
-              options={currentQuestion.options}
-              onAnswerSelected={handleAnswerSelected}
-              showExplanation={false}
-              selectedOption={selectedAnswer}
-              disabled={showFeedbackModal}
-              onCheckAnswer={handleCheckAnswer}
-            />
-          </View>
-        </ScrollView>
-
-        {/* Answer Feedback Modal */}
-        <AnswerFeedbackModal
-          visible={showFeedbackModal}
-          onClose={() => setShowFeedbackModal(false)}
-          isCorrect={isAnswerCorrect}
-          explanation={currentQuestion.explanation}
-          correctAnswer={
-            currentQuestion.options.find((o) => o.isCorrect)?.text || ""
-          }
-          hint={currentQuestion.hint}
-          onTryAgain={handleTryAgain}
-          onSeeAnswer={handleSeeAnswer}
-          onNextQuestion={handleNextQuestion}
-          attemptCount={attemptCount}
-        />
-
-        {/* Question Report Modal */}
-        <QuestionReportModal
-          visible={showReportModal}
-          onClose={() => setShowReportModal(false)}
-          onSubmit={handleReportSubmit}
-          questionId={currentQuestion.id}
-        />
-        
-        {/* End Practice Button */}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
+      <View style={styles.container}>
+        {/* End session button at top right */}
         <TouchableOpacity
-          style={styles.endPracticeButton}
+          style={styles.endSessionButton}
           onPress={navigateToSummary}
         >
-          <Text style={styles.endPracticeButtonText}>End Practice</Text>
+          <X size={20} color="#1F2937" />
+          <Text style={styles.endSessionButtonText}>End Session</Text>
         </TouchableOpacity>
+
+        <View style={styles.wrapper}>
+          {/* Subject and session info */}
+          <View style={styles.sessionInfo}>
+            <LinearGradient
+              colors={['#EEF2FF', '#C7D2FE']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.sessionInfoGradient}
+            >
+              <View style={styles.sessionInfoContent}>
+                <View style={styles.sessionSubject}>
+                  <Text style={styles.subjectText}>{(subject as string) || "Physics"}</Text>
+                  <Text style={styles.sessionTypeText}>
+                    {(type as string)?.charAt(0).toUpperCase() + (type as string)?.slice(1) || "Practice"}
+                  </Text>
+                </View>
+                <View style={styles.sessionStats}>
+                  <View style={styles.statItem}>
+                    <Clock size={16} color="#4F46E5" />
+                    <Text style={styles.statText}>{formatTime(timeSpent)}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Award size={16} color="#4F46E5" />
+                    <Text style={styles.statText}>{streak} streak</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Zap size={16} color="#4F46E5" />
+                    <Text style={styles.statText}>{currentXP}/{goalXP} XP</Text>
+                  </View>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+
+          {/* XP Progress bar */}
+          <View style={styles.xpProgressContainer}>
+            <View style={styles.xpLabelContainer}>
+              <Text style={styles.xpLabel}>XP Progress</Text>
+              <Text style={styles.xpValue}>{currentXP}/{goalXP}</Text>
+            </View>
+            <View style={styles.xpProgressBarContainer}>
+              <Animated.View 
+                style={[
+                  styles.xpProgressFill,
+                  { width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0%', '100%']
+                  })}
+                ]}
+              />
+            </View>
+          </View>
+
+          {/* Streak Indicator */}
+          <StreakIndicator streak={streak} visible={showStreakIndicator} />
+
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.topSpacing} />
+            {/* Question display with bookmark button */}
+            <Animated.View style={[
+              styles.questionContainer,
+              { 
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}>
+              <View style={styles.questionCardHeader}>
+                <View style={styles.questionNumberContainer}>
+                  <Text style={styles.questionNumberText}>
+                    Question {currentQuestionIndex + 1}/{Math.ceil(goalXP / 25)}
+                  </Text>
+                  <Text style={styles.questionDifficultyText}>
+                    {currentQuestion.difficultyLevel}
+                  </Text>
+                </View>
+                <View style={styles.questionActions}>
+                  <BookmarkButton
+                    questionId={currentQuestion.id}
+                    isBookmarked={bookmarkedQuestions.includes(currentQuestion.id)}
+                    onToggleBookmark={handleToggleBookmark}
+                  />
+                  <TouchableOpacity
+                    style={styles.reportIcon}
+                    onPress={() => setShowReportModal(true)}
+                  >
+                    <Flag size={18} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.questionContent}>
+                <View style={styles.subjectTopicContainer}>
+                  <Text style={styles.subjectTopicText}>
+                    {currentQuestion.subject} • {currentQuestion.topic}
+                  </Text>
+                </View>
+                <Text style={styles.questionText}>{currentQuestion.questionText}</Text>
+              </View>
+            </Animated.View>
+
+            {/* Answer options */}
+            <Animated.View style={[
+              styles.answerContainer,
+              { 
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}>
+              <AnswerOptions
+                options={currentQuestion.options}
+                onAnswerSelected={handleAnswerSelected}
+                showExplanation={false}
+                selectedOption={selectedAnswer}
+                disabled={showFeedbackModal}
+              />
+            </Animated.View>
+          </ScrollView>
+
+          {/* Answer Feedback Modal */}
+          <AnswerFeedbackModal
+            visible={showFeedbackModal}
+            onClose={() => setShowFeedbackModal(false)}
+            isCorrect={isAnswerCorrect}
+            explanation={currentQuestion.explanation}
+            correctAnswer={
+              currentQuestion.options.find((o) => o.isCorrect)?.text || ""
+            }
+            hint={currentQuestion.hint}
+            onTryAgain={handleTryAgain}
+            onSeeAnswer={handleSeeAnswer}
+            onNextQuestion={handleNextQuestion}
+            attemptCount={attemptCount}
+          />
+
+          {/* Question Report Modal */}
+          <QuestionReportModal
+            visible={showReportModal}
+            onClose={() => setShowReportModal(false)}
+            onSubmit={handleReportSubmit}
+            questionId={currentQuestion.id}
+          />
+          
+          {/* Check Answer Button */}
+          <View style={styles.bottomActions}>
+            {selectedAnswer ? (
+              <LinearGradient
+                colors={['#4F46E5', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.checkAnswerButtonGradient}
+              >
+                <TouchableOpacity
+                  style={styles.checkAnswerButton}
+                  onPress={handleCheckAnswer}
+                >
+                  <Text style={styles.checkAnswerButtonText}>Check Answer</Text>
+                  <CheckCircle size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              </LinearGradient>
+            ) : (
+              <View style={styles.checkAnswerButtonDisabled}>
+                <Text style={styles.checkAnswerButtonTextDisabled}>Select an Answer</Text>
+              </View>
+            )}
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+    // Add padding to avoid status bar
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F9FAFB",
   },
   wrapper: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  endSessionButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  endSessionButtonText: {
+    color: "#1F2937",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  sessionInfo: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
     backgroundColor: "white",
+    marginTop: 50, // Add space for the top button
   },
-  backButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
+  sessionInfoGradient: {
+    borderRadius: 12,
+    overflow: "hidden",
   },
-  headerTitle: {
-    fontSize: 18,
+  sessionInfoContent: {
+    padding: 12,
+  },
+  sessionSubject: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  subjectText: {
+    fontSize: 16,
     fontWeight: "600",
     color: "#1F2937",
   },
-  headerActions: {
+  sessionTypeText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#4F46E5",
+  },
+  sessionStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  statItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 4,
   },
-  reportButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
+  statText: {
+    fontSize: 12,
+    color: "#4B5563",
+    fontWeight: "500",
   },
-  progressContainer: {
-    padding: 16,
+  xpProgressContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
+  },
+  xpLabelContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  xpLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#4B5563",
+  },
+  xpValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4F46E5",
+  },
+  xpProgressBarContainer: {
+    height: 8,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  xpProgressFill: {
+    height: "100%",
+    backgroundColor: "#4F46E5",
+    borderRadius: 4,
   },
   content: {
     flex: 1,
     padding: 16,
   },
   topSpacing: {
-    height: 16,
+    height: 8,
+  },
+  questionContainer: {
+    marginBottom: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  questionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  questionNumberContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  questionNumberText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4B5563',
+    marginRight: 8,
+  },
+  questionDifficultyText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  questionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reportIcon: {
+    marginLeft: 12,
+    padding: 4,
+  },
+  questionContent: {
+    marginTop: 4,
+  },
+  subjectTopicContainer: {
+    marginBottom: 8,
+  },
+  subjectTopicText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  questionText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#1F2937',
   },
   answerContainer: {
-    marginTop: 16,
+    marginBottom: 32,
   },
-  nextButton: {
+  bottomActions: {
+    padding: 16,
+    backgroundColor: "white",
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  checkAnswerButtonGradient: {
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  checkAnswerButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#4F46E5",
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
+    paddingVertical: 16,
+    width: "100%",
+    gap: 8,
   },
-  nextButtonText: {
+  checkAnswerButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-    marginRight: 8,
   },
-  endPracticeButton: {
-    backgroundColor: "#EF4444",
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 16,
+  checkAnswerButtonDisabled: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    width: "100%",
+    backgroundColor: "#E5E7EB",
+    borderRadius: 16,
   },
-  endPracticeButtonText: {
-    color: "white",
+  checkAnswerButtonTextDisabled: {
+    color: "#9CA3AF",
     fontSize: 16,
     fontWeight: "600",
   },

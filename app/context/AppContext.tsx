@@ -5,6 +5,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type PracticeType = "refine" | "recall" | "conquer";
 
+// Practice flow progress tracking
+type PracticeProgress = {
+  currentStep: number;
+  totalSteps: number;
+  subject: string | null;
+  type: PracticeType | null;
+  goal: number | null;
+};
+
 type SurveyData = {
   examType: "JEE" | "NEET" | null;
   currentClass: "Class 11" | "Class 12" | "Dropper" | null;
@@ -64,6 +73,7 @@ type AppContextType = {
   pet: PetData;
   surveyData: SurveyData;
   practiceSession: PracticeSession;
+  practiceProgress: PracticeProgress;
   studiedChapters: string[];
   // Auth actions
   signIn: () => void;
@@ -83,24 +93,27 @@ type AppContextType = {
   isFirstPracticeSession: () => boolean;
   // Goal actions
   updateUserGoals: (goals: Partial<UserGoals>) => void;
+  // Practice flow actions
+  updatePracticeProgress: (
+    xpEarned: number,
+    isCorrect: boolean,
+    timeSpent: number,
+  ) => void;
+  startPracticeSession: (
+    subject: string,
+    type: PracticeType,
+    goal: number,
+  ) => void;
+  setPracticeStep: (step: number, totalSteps?: number) => void;
+  updatePracticeStepInfo: (data: Partial<PracticeProgress>) => void;
+  completePracticeSession: () => void;
+  resetPracticeProgress: () => void;
   // Pet actions
   feedPet: () => void;
   playWithPet: () => void;
   updatePetMood: () => void;
   updateTemperature: () => void;
   coolDownPenguin: () => boolean;
-  // Practice actions
-  startPracticeSession: (
-    subject: string,
-    type: PracticeType,
-    goal: number,
-  ) => void;
-  updatePracticeProgress: (
-    xpEarned: number,
-    isCorrect: boolean,
-    timeSpent: number,
-  ) => void;
-  completePracticeSession: () => void;
   // Chapter actions
   updateStudiedChapters: (chapters: string[]) => void;
 };
@@ -159,6 +172,14 @@ const defaultPracticeSession: PracticeSession = {
   timeSpent: 0,
 };
 
+const defaultPracticeProgress: PracticeProgress = {
+  currentStep: 1,
+  totalSteps: 4, // Subject → Type → Goal → Questions
+  subject: null,
+  type: null,
+  goal: null
+};
+
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 // Keys for AsyncStorage
@@ -167,7 +188,8 @@ const STORAGE_KEYS = {
   PET_DATA: '@doable:pet_data',
   SURVEY_DATA: '@doable:survey_data',
   STUDIED_CHAPTERS: '@doable:studied_chapters',
-  USER_GOALS: '@doable:user_goals'
+  USER_GOALS: '@doable:user_goals',
+  PRACTICE_PROGRESS: '@doable:practice_progress'
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -181,6 +203,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [practiceSession, setPracticeSession] = useState<PracticeSession>(
     defaultPracticeSession,
   );
+  const [practiceProgress, setPracticeProgress] = useState<PracticeProgress>(
+    defaultPracticeProgress
+  );
   const [studiedChapters, setStudiedChapters] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -188,12 +213,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const loadPersistedData = async () => {
       try {
-        const [userData, petData, surveyData, chaptersData, goalsData] = await Promise.all([
+        const [userData, petData, surveyData, chaptersData, goalsData, practiceProgressData] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.USER_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.PET_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.SURVEY_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.STUDIED_CHAPTERS),
           AsyncStorage.getItem(STORAGE_KEYS.USER_GOALS),
+          AsyncStorage.getItem(STORAGE_KEYS.PRACTICE_PROGRESS),
         ]);
 
         if (userData) setUser({ ...defaultUser, ...JSON.parse(userData) });
@@ -204,6 +230,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           ...prevUser,
           goals: JSON.parse(goalsData)
         }));
+        if (practiceProgressData) setPracticeProgress({ ...defaultPracticeProgress, ...JSON.parse(practiceProgressData) });
       } catch (error) {
         console.error('Error loading persisted data:', error);
       } finally {
@@ -301,6 +328,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     saveGoals();
   }, [user.goals]);
 
+  // Save practice progress data when it changes
+  useEffect(() => {
+    const savePracticeProgress = async () => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEYS.PRACTICE_PROGRESS, JSON.stringify(practiceProgress));
+      } catch (error) {
+        console.error('Error saving practice progress:', error);
+      }
+    };
+
+    savePracticeProgress();
+  }, [practiceProgress]);
+
   // Clear persisted data on sign out
   const clearPersistedData = async () => {
     try {
@@ -310,6 +350,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         AsyncStorage.removeItem(STORAGE_KEYS.SURVEY_DATA),
         AsyncStorage.removeItem(STORAGE_KEYS.STUDIED_CHAPTERS),
         AsyncStorage.removeItem(STORAGE_KEYS.USER_GOALS),
+        AsyncStorage.removeItem(STORAGE_KEYS.PRACTICE_PROGRESS),
       ]);
     } catch (error) {
       console.error('Error clearing persisted data:', error);
@@ -536,6 +577,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     return false; // Not enough snowballs
   };
 
+  // Practice flow management functions
+  const setPracticeStep = (step: number, totalSteps?: number) => {
+    setPracticeProgress(prev => ({
+      ...prev,
+      currentStep: step,
+      totalSteps: totalSteps || prev.totalSteps
+    }));
+  };
+
+  const updatePracticeStepInfo = (data: Partial<PracticeProgress>) => {
+    setPracticeProgress(prev => ({
+      ...prev,
+      ...data
+    }));
+  };
+
+  const resetPracticeProgress = () => {
+    setPracticeProgress(defaultPracticeProgress);
+  };
+
   // Practice actions
   const startPracticeSession = (
     subject: string,
@@ -551,6 +612,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       correctAnswers: 0,
       timeSpent: 0,
     });
+    
+    // Update practice progress with final values
+    setPracticeProgress(prev => ({
+      ...prev,
+      subject,
+      type,
+      goal,
+      currentStep: 4 // Final step (Questions)
+    }));
   };
 
   const updatePracticeProgress = (
@@ -590,8 +660,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       lastTemperatureUpdate: Date.now(),
     });
 
-    // Reset practice session
+    // Reset practice session and progress
     setPracticeSession(defaultPracticeSession);
+    resetPracticeProgress();
   };
 
   // Chapter actions
@@ -604,6 +675,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     pet,
     surveyData,
     practiceSession,
+    practiceProgress,
     studiedChapters,
     signIn,
     signOut,
@@ -619,8 +691,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     updateTemperature,
     coolDownPenguin,
     startPracticeSession,
+    setPracticeStep,
+    updatePracticeStepInfo,
     updatePracticeProgress,
     completePracticeSession,
+    resetPracticeProgress,
     updateStudiedChapters,
   };
 

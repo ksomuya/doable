@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,11 +11,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ArrowLeft, BookOpen, Clock, Award, Zap } from "lucide-react-native";
 import { useAppContext } from "../context/AppContext";
+import ProgressBar from "../components/ProgressBar";
 
-type Subject = {
+interface Subject {
   id: string;
   name: string;
-};
+  icon?: React.ReactNode;
+}
 
 const subjects: Subject[] = [
   {
@@ -34,10 +36,15 @@ const subjects: Subject[] = [
 
 const PracticeHomeScreen = () => {
   const router = useRouter();
-  const { isFirstPracticeSession } = useAppContext();
+  const { isFirstPracticeSession, setPracticeStep, updatePracticeStepInfo, practiceProgress } = useAppContext();
   
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Set initial step when component loads
+  useEffect(() => {
+    setPracticeStep(1, 4); // Step 1 of 4 in the practice flow
+  }, []);
 
   const handleSubjectSelect = (subjectId: string) => {
     setSelectedSubject(subjectId);
@@ -45,6 +52,12 @@ const PracticeHomeScreen = () => {
 
   const handleContinue = () => {
     if (!selectedSubject) return;
+
+    // Update practice progress in context
+    updatePracticeStepInfo({
+      subject: selectedSubject,
+      currentStep: 2 // Moving to step 2
+    });
 
     setIsLoading(true);
     setTimeout(() => {
@@ -64,8 +77,12 @@ const PracticeHomeScreen = () => {
           >
             <ArrowLeft size={22} color="#1F2937" />
           </TouchableOpacity>
-          <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
+          <View style={styles.progressBarContainer}>
+            <ProgressBar 
+              currentStep={practiceProgress.currentStep} 
+              totalSteps={practiceProgress.totalSteps}
+              style={styles.progressBar}
+            />
           </View>
           <View style={styles.placeholder} />
         </View>
@@ -107,15 +124,13 @@ const PracticeHomeScreen = () => {
             onPress={handleContinue}
             disabled={!selectedSubject || isLoading}
           >
-            <Text style={styles.continueButtonText}>Continue</Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.continueButtonText}>Continue</Text>
+            )}
           </TouchableOpacity>
         </View>
-
-        {isLoading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#4F46E5" />
-          </View>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -138,23 +153,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   backButton: {
     padding: 8,
     borderRadius: 8,
+    backgroundColor: "#F3F4F6",
   },
-  progressBar: {
+  progressBarContainer: {
     flex: 1,
-    height: 4,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 2,
     marginHorizontal: 12,
   },
-  progressFill: {
-    width: "33%",
-    height: "100%",
-    backgroundColor: "#22C55E",
-    borderRadius: 2,
+  progressBar: {
+    height: 4,
   },
   placeholder: {
     width: 40,
@@ -167,7 +179,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: "#000000",
-    marginTop: 20,
+    marginTop: 24,
     marginBottom: 8,
   },
   subtitle: {
@@ -176,35 +188,36 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   subjectsContainer: {
-    gap: 16,
+    marginBottom: 40,
   },
   subjectItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
     borderColor: "#E5E7EB",
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: "#F9FAFB",
   },
   selectedSubjectItem: {
     borderColor: "#4F46E5",
-    backgroundColor: "#F5F7FF",
+    backgroundColor: "#EEF2FF",
   },
   radioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#D1D5DB",
+    borderColor: "#4F46E5",
     marginRight: 12,
     justifyContent: "center",
     alignItems: "center",
   },
   radioButtonSelected: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "#4F46E5",
   },
   subjectName: {
@@ -230,11 +243,5 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.8)",
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

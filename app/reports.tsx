@@ -176,7 +176,7 @@ export default function ReportsScreen() {
             <Calendar size={16} color="#FFF" />
             <Text style={styles.dateTextEnhanced}>{dailyData.date}</Text>
           </LinearGradient>
-        </View>
+              </View>
 
         {/* Performance Score Card */}
         <View style={styles.scoreCard}>
@@ -188,8 +188,8 @@ export default function ReportsScreen() {
               <Text style={styles.scoreTitle}>Today's Performance</Text>
               <View style={[styles.gradeBadge, { backgroundColor: gradeColor }]}>
                 <Text style={styles.gradeText}>{grade}</Text>
-              </View>
             </View>
+          </View>
             
             <View style={styles.scoreContent}>
               <View style={styles.scoreCircle}>
@@ -201,32 +201,32 @@ export default function ReportsScreen() {
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <BookOpen size={16} color="#3B82F6" />
-                  </View>
+            </View>
                   <View>
                     <Text style={styles.metricValue}>{dailyData.totalQuestions}</Text>
                     <Text style={styles.metricLabel}>Questions</Text>
-                  </View>
-                </View>
+          </View>
+              </View>
                 
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <Check size={16} color="#10B981" />
-                  </View>
+            </View>
                   <View>
                     <Text style={styles.metricValue}>{dailyData.correctAnswers}</Text>
                     <Text style={styles.metricLabel}>Correct</Text>
-                  </View>
-                </View>
+          </View>
+              </View>
                 
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <Clock size={16} color="#8B5CF6" />
-                  </View>
+            </View>
                   <View>
                     <Text style={styles.metricValue}>{dailyData.averageTime}s</Text>
                     <Text style={styles.metricLabel}>Avg Time</Text>
-                  </View>
-                </View>
+          </View>
+        </View>
                 
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
@@ -240,7 +240,7 @@ export default function ReportsScreen() {
               </View>
             </View>
           </LinearGradient>
-        </View>
+      </View>
 
         {/* Insights Card */}
         <View style={styles.insightsCard}>
@@ -264,7 +264,7 @@ export default function ReportsScreen() {
                 <Text style={styles.distributionValue}>{item.value} min</Text>
               </View>
               <View style={styles.distributionBarContainer}>
-                <View 
+              <View
                   style={[
                     styles.distributionBar, 
                     { 
@@ -272,18 +272,18 @@ export default function ReportsScreen() {
                       backgroundColor: item.color
                     }
                   ]} 
-                />
-              </View>
+              />
             </View>
-          ))}
-        </View>
+          </View>
+        ))}
+      </View>
 
         {/* Today's Study Sessions - Enhanced */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderEnhanced}>
             <Text style={styles.sectionTitleEnhanced}>Study Sessions</Text>
             <Text style={styles.sectionSubtitle}>{dailyData.sessions.length} sessions today</Text>
-          </View>
+            </View>
           
           {dailyData.sessions.map((session, index) => (
             <View key={index} style={styles.sessionCardEnhanced}>
@@ -503,7 +503,7 @@ export default function ReportsScreen() {
             {weeklyData.dailyBreakdown.map((day, index) => (
               <View key={index} style={styles.chartColumnEnhanced}>
                 <View style={styles.barContainerEnhanced}>
-                  <View 
+              <View
                     style={[
                       styles.accuracyBarEnhanced, 
                       { 
@@ -526,21 +526,21 @@ export default function ReportsScreen() {
                         minHeight: 10,
                       }
                     ]}
-                  />
-                </View>
+              />
+            </View>
                 <Text style={styles.chartLabelEnhanced}>{day.day}</Text>
                 <Text style={styles.chartValueEnhanced}>{day.accuracy}%</Text>
-              </View>
-            ))}
           </View>
-        </View>
+        ))}
+          </View>
+      </View>
 
         {/* Weak Topics - Enhanced */}
         <View style={styles.topicsCardEnhanced}>
           <View style={styles.topicsHeaderEnhanced}>
             <AlertTriangle size={20} color="#EF4444" />
             <Text style={styles.topicsTitle}>Areas for Improvement</Text>
-          </View>
+              </View>
           
           {weeklyData.weakTopics.map((topic, index) => (
             <View key={index} style={styles.topicItemEnhanced}>
@@ -548,8 +548,8 @@ export default function ReportsScreen() {
                 <Text style={styles.topicNameEnhanced}>{topic.name}</Text>
                 <View style={[styles.topicBadgeEnhanced, { backgroundColor: "#FEE2E2", borderColor: "#EF4444" }]}>
                   <Text style={[styles.topicBadgeTextEnhanced, { color: "#EF4444" }]}>{topic.accuracy}%</Text>
-                </View>
               </View>
+            </View>
               
               <View style={styles.topicProgressContainer}>
                 <View style={styles.topicProgressBackground}>
@@ -562,12 +562,12 @@ export default function ReportsScreen() {
                       { width: `${topic.accuracy}%` }
                     ]} 
                   />
-                </View>
+      </View>
                 
                 <View style={styles.topicProgressMarkersContainer}>
                   <View style={[styles.topicProgressMarker, { left: '70%' }]}>
                     <Text style={styles.topicProgressMarkerText}>70%</Text>
-                  </View>
+    </View>
                   <View style={[styles.topicProgressMarker, { left: '85%' }]}>
                     <Text style={styles.topicProgressMarkerText}>85%</Text>
                   </View>
@@ -582,14 +582,14 @@ export default function ReportsScreen() {
               </View>
             </View>
           ))}
-        </View>
+          </View>
 
         {/* Strong Topics - Enhanced */}
         <View style={styles.topicsCardEnhanced}>
           <View style={styles.topicsHeaderEnhanced}>
             <Trophy size={20} color="#10B981" />
             <Text style={styles.topicsTitle}>Strong Areas</Text>
-          </View>
+              </View>
           
           {weeklyData.strongTopics.map((topic, index) => (
             <View key={index} style={styles.topicItemEnhanced}>
@@ -597,8 +597,8 @@ export default function ReportsScreen() {
                 <Text style={styles.topicNameEnhanced}>{topic.name}</Text>
                 <View style={[styles.topicBadgeEnhanced, { backgroundColor: "#D1FAE5", borderColor: "#10B981" }]}>
                   <Text style={[styles.topicBadgeTextEnhanced, { color: "#10B981" }]}>{topic.accuracy}%</Text>
-                </View>
-              </View>
+            </View>
+          </View>
               
               <View style={styles.topicProgressContainer}>
                 <View style={styles.topicProgressBackground}>
@@ -611,27 +611,27 @@ export default function ReportsScreen() {
                       { width: `${topic.accuracy}%` }
                     ]} 
                   />
-                </View>
+              </View>
                 
                 <View style={styles.topicProgressMarkersContainer}>
                   <View style={[styles.topicProgressMarker, { left: '70%' }]}>
                     <Text style={styles.topicProgressMarkerText}>70%</Text>
-                  </View>
+            </View>
                   <View style={[styles.topicProgressMarker, { left: '85%' }]}>
                     <Text style={styles.topicProgressMarkerText}>85%</Text>
-                  </View>
-                </View>
+          </View>
               </View>
+            </View>
               
               <View style={styles.topicActionContainer}>
                 <TouchableOpacity style={styles.topicActionButton}>
                   <Text style={styles.topicActionText}>Review Material</Text>
                   <ChevronRight size={16} color="#4F46E5" />
                 </TouchableOpacity>
-              </View>
-            </View>
-          ))}
+          </View>
         </View>
+          ))}
+      </View>
       </Animated.View>
     );
   };
@@ -709,7 +709,7 @@ export default function ReportsScreen() {
             <Calendar size={16} color="#FFF" />
             <Text style={styles.dateTextEnhanced}>{monthlyData.month}</Text>
           </LinearGradient>
-        </View>
+          </View>
 
         {/* Monthly Performance Overview */}
         <View style={styles.scoreCard}>
@@ -721,8 +721,8 @@ export default function ReportsScreen() {
               <Text style={styles.scoreTitle}>Monthly Overview</Text>
               <View style={[styles.gradeBadge, { backgroundColor: monthlyGradeColor }]}>
                 <Text style={styles.gradeText}>{monthlyGrade}</Text>
-              </View>
-            </View>
+        </View>
+          </View>
             
             <View style={styles.scoreContent}>
               <View style={styles.scoreCircle}>
@@ -738,17 +738,17 @@ export default function ReportsScreen() {
                   <View>
                     <Text style={styles.metricValue}>{monthlyData.totalQuestions}</Text>
                     <Text style={styles.metricLabel}>Questions</Text>
-                  </View>
-                </View>
-                
+        </View>
+      </View>
+
                 <View style={styles.scoreMetricItem}>
                   <View style={styles.metricIconContainer}>
                     <Zap size={16} color="#8B5CF6" />
                   </View>
-                  <View>
+      <View>
                     <Text style={styles.metricValue}>{monthlyData.longestStreak}</Text>
                     <Text style={styles.metricLabel}>Longest Streak</Text>
-                  </View>
+        </View>
                 </View>
                 
                 <View style={styles.scoreMetricItem}>
@@ -785,8 +785,8 @@ export default function ReportsScreen() {
               <Text style={styles.monthlyProgressTitle}>Your Progress</Text>
               <Text style={styles.monthlyProgressSubtitle}>
                 {overallTrend === "improved" ? "Keep it up!" : "Room for improvement"}
-              </Text>
-            </View>
+          </Text>
+        </View>
           </View>
           
           <View style={styles.monthlyProgressValue}>
@@ -795,13 +795,13 @@ export default function ReportsScreen() {
               { color: overallTrend === "improved" ? "#10B981" : "#EF4444" }
             ]}>
               {overallTrend === "improved" ? "+" : "-"}{trendPercentage}%
-            </Text>
+          </Text>
             <Text style={styles.monthlyProgressDescription}>
               {overallTrend === "improved" 
                 ? "Your performance has improved compared to last month" 
                 : "Your performance has declined compared to last month"}
-            </Text>
-          </View>
+          </Text>
+        </View>
           
           <Image 
             source={{ 
@@ -811,7 +811,7 @@ export default function ReportsScreen() {
             }} 
             style={styles.progressImage} 
           />
-        </View>
+      </View>
 
         {/* Monthly Insights */}
         <View style={styles.insightsCard}>
@@ -820,7 +820,7 @@ export default function ReportsScreen() {
             <View key={index} style={styles.insightItem}>
               <View style={styles.insightIcon}>{insight.icon}</View>
               <Text style={styles.insightText}>{insight.text}</Text>
-            </View>
+    </View>
           ))}
         </View>
 

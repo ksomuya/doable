@@ -1,52 +1,50 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface ProgressBarProps {
-  currentXP?: number;
-  goalXP?: number;
-  color?: string;
+  currentStep: number;
+  totalSteps: number;
   height?: number;
-  showLabel?: boolean;
+  backgroundColor?: string;
+  gradientColors?: readonly [string, string, ...string[]];
+  style?: object;
 }
 
-const ProgressBar = ({
-  currentXP = 75,
-  goalXP = 200,
-  color = "#4F46E5",
-  height = 12,
-  showLabel = true,
-}: ProgressBarProps) => {
-  // Calculate the progress percentage (capped at 100%)
-  const progressPercentage = Math.min(
-    Math.round((currentXP / goalXP) * 100),
-    100,
-  );
-
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  currentStep,
+  totalSteps,
+  height = 4,
+  backgroundColor = "#E5E7EB",
+  gradientColors = ["#4F46E5", "#7C3AED"],
+  style = {},
+}) => {
+  // Calculate width percentage
+  const progressPercentage = Math.min(Math.max((currentStep / totalSteps) * 100, 0), 100);
+  
   return (
-    <View className="w-full bg-gray-100 rounded-full p-1">
-      {/* Progress bar container */}
-      <View className="relative w-full">
-        {/* Progress bar fill */}
-        <View
-          className="rounded-full"
-          style={{
-            backgroundColor: color,
-            height: height,
-            width: `${progressPercentage}%`,
-          }}
-        />
-
-        {/* XP Label */}
-        {showLabel && (
-          <View className="absolute top-0 right-2 -mt-6">
-            <Text className="text-sm font-medium text-gray-700">
-              {currentXP} / {goalXP} XP
-            </Text>
-          </View>
-        )}
-      </View>
+    <View style={[styles.container, { height: height, backgroundColor }, style]}>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[styles.progressFill, { width: `${progressPercentage}%` }]}
+      />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    height: 4,
+    borderRadius: 2,
+    overflow: "hidden",
+    width: "100%",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
+  },
+});
 
 export default ProgressBar;

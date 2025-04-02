@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,36 +6,56 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Image,
+  ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Check } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { ArrowLeft, Brain, Repeat, Zap, Check } from "lucide-react-native";
+import { useAppContext } from "../context/AppContext";
+import ProgressBar from "../components/ProgressBar";
+import { LinearGradient } from "expo-linear-gradient";
 
 const PracticeTypeScreen = () => {
   const router = useRouter();
+  const { practiceProgress, updatePracticeStepInfo } = useAppContext();
   const [selectedType, setSelectedType] = useState<string | null>("refine");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Update practice progress when screen loads
+  useEffect(() => {
+    if (practiceProgress.currentStep !== 2) {
+      updatePracticeStepInfo({
+        currentStep: 2 // Second step in practice flow
+      });
+    }
+  }, []);
 
   const practiceTypes = [
     {
       id: "refine",
       title: "Refine",
       description: "Strengthen your weak areas",
-      iconSymbol: "⟲",
-      color: "#E0E7FF",
+      icon: (color: string) => <Brain size={24} color={color} />,
+      gradientColors: ["#E0E7FF", "#C7D2FE"] as const,
+      borderColor: "#818CF8",
+      iconBgColor: "#4F46E5",
     },
     {
       id: "recall",
       title: "Recall",
       description: "Sharpen your skills with balanced practice",
-      iconSymbol: "⇄",
-      color: "#FEF3C7",
+      icon: (color: string) => <Repeat size={24} color={color} />,
+      gradientColors: ["#FEF3C7", "#FDE68A"] as const,
+      borderColor: "#F59E0B",
+      iconBgColor: "#D97706",
     },
     {
       id: "conquer",
       title: "Conquer",
       description: "Test your limits with challenging problems",
-      iconSymbol: "⏋",
-      color: "#EDE9FE",
+      icon: (color: string) => <Zap size={24} color={color} />,
+      gradientColors: ["#EDE9FE", "#DDD6FE"] as const,
+      borderColor: "#A78BFA",
+      iconBgColor: "#7C3AED",
     },
   ];
 
@@ -46,7 +66,17 @@ const PracticeTypeScreen = () => {
   const handleContinue = () => {
     if (!selectedType) return;
 
-    router.push("/practice/goal");
+    // Update practice progress in context
+    updatePracticeStepInfo({
+      type: selectedType as "refine" | "recall" | "conquer",
+      currentStep: 3 // Moving to step 3
+    });
+
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      router.push("/practice/goal");
+    }, 300);
   };
 
   return (
@@ -58,99 +88,64 @@ const PracticeTypeScreen = () => {
         >
           <ArrowLeft size={22} color="#1F2937" />
         </TouchableOpacity>
-        <View style={styles.progressBar}>
-          <View style={styles.progressFill} />
+        <View style={styles.progressBarContainer}>
+          <ProgressBar
+            currentStep={practiceProgress.currentStep}
+            totalSteps={practiceProgress.totalSteps}
+            style={styles.progressBar}
+          />
         </View>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content}>
-        <Text style={styles.title}>Type</Text>
+        <Text style={styles.title}>Practice Mode</Text>
         <Text style={styles.subtitle}>
-          Select what you want to focus upon in this practice session
+          Select what you want to focus on in this practice session
         </Text>
 
         <View style={styles.typesContainer}>
-          <View style={styles.typeRow}>
+          {practiceTypes.map((type) => (
             <TouchableOpacity
-              style={[
-                styles.typeCard,
-                { backgroundColor: practiceTypes[0].color },
-                selectedType === practiceTypes[0].id && styles.selectedTypeCard,
-              ]}
-              onPress={() => handleTypeSelect(practiceTypes[0].id)}
+              key={type.id}
+              style={styles.typeCardContainer}
+              onPress={() => handleTypeSelect(type.id)}
+              activeOpacity={0.7}
             >
-              <View style={styles.typeHeader}>
-                <Text style={styles.typeTitle}>{practiceTypes[0].title}</Text>
-                {selectedType === practiceTypes[0].id && (
-                  <View style={styles.checkContainer}>
-                    <Check size={16} color="#FFFFFF" />
+              <LinearGradient
+                colors={type.gradientColors}
+                style={[
+                  styles.typeCard,
+                  selectedType === type.id && {
+                    borderColor: type.borderColor,
+                    borderWidth: 2,
+                  },
+                ]}
+              >
+                <View style={styles.typeHeader}>
+                  <View
+                    style={[
+                      styles.iconContainer,
+                      { backgroundColor: type.iconBgColor },
+                    ]}
+                  >
+                    {type.icon("#FFFFFF")}
                   </View>
-                )}
-              </View>
-              <Text style={styles.typeDescription}>
-                {practiceTypes[0].description}
-              </Text>
-              <View style={styles.iconContainer}>
-                <Text style={styles.iconPlaceholder}>
-                  {practiceTypes[0].iconSymbol}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.typeCard,
-                { backgroundColor: practiceTypes[1].color },
-                selectedType === practiceTypes[1].id && styles.selectedTypeCard,
-              ]}
-              onPress={() => handleTypeSelect(practiceTypes[1].id)}
-            >
-              <View style={styles.typeHeader}>
-                <Text style={styles.typeTitle}>{practiceTypes[1].title}</Text>
-                {selectedType === practiceTypes[1].id && (
-                  <View style={styles.checkContainer}>
-                    <Check size={16} color="#FFFFFF" />
+                  <View style={styles.typeTextContainer}>
+                    <Text style={styles.typeTitle}>{type.title}</Text>
+                    <Text style={styles.typeDescription}>
+                      {type.description}
+                    </Text>
                   </View>
-                )}
-              </View>
-              <Text style={styles.typeDescription}>
-                {practiceTypes[1].description}
-              </Text>
-              <View style={styles.iconContainer}>
-                <Text style={styles.iconPlaceholder}>
-                  {practiceTypes[1].iconSymbol}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[
-              styles.typeCard,
-              styles.singleTypeCard,
-              { backgroundColor: practiceTypes[2].color },
-              selectedType === practiceTypes[2].id && styles.selectedTypeCard,
-            ]}
-            onPress={() => handleTypeSelect(practiceTypes[2].id)}
-          >
-            <View style={styles.typeHeader}>
-              <Text style={styles.typeTitle}>{practiceTypes[2].title}</Text>
-              {selectedType === practiceTypes[2].id && (
-                <View style={styles.checkContainer}>
-                  <Check size={16} color="#FFFFFF" />
+                  {selectedType === type.id && (
+                    <View style={[styles.checkContainer, { backgroundColor: type.iconBgColor }]}>
+                      <Check size={16} color="#FFFFFF" />
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-            <Text style={styles.typeDescription}>
-              {practiceTypes[2].description}
-            </Text>
-            <View style={styles.iconContainer}>
-              <Text style={styles.iconPlaceholder}>
-                {practiceTypes[2].iconSymbol}
-              </Text>
-            </View>
-          </TouchableOpacity>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
         </View>
       </ScrollView>
 
@@ -161,9 +156,13 @@ const PracticeTypeScreen = () => {
             !selectedType && styles.disabledButton,
           ]}
           onPress={handleContinue}
-          disabled={!selectedType}
+          disabled={!selectedType || isLoading}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.continueButtonText}>Continue</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -181,23 +180,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   backButton: {
     padding: 8,
     borderRadius: 8,
+    backgroundColor: "#F3F4F6",
   },
-  progressBar: {
+  progressBarContainer: {
     flex: 1,
-    height: 4,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 2,
     marginHorizontal: 12,
   },
-  progressFill: {
-    width: "66%",
-    height: "100%",
-    backgroundColor: "#22C55E",
-    borderRadius: 2,
+  progressBar: {
+    height: 4,
   },
   placeholder: {
     width: 40,
@@ -210,7 +206,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: "#000000",
-    marginTop: 20,
+    marginTop: 24,
     marginBottom: 8,
   },
   subtitle: {
@@ -219,57 +215,59 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   typesContainer: {
-    gap: 16,
+    marginBottom: 40,
   },
-  typeRow: {
-    flexDirection: "row",
-    gap: 16,
+  typeCardContainer: {
+    marginBottom: 16,
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   typeCard: {
-    flex: 1,
     borderRadius: 16,
-    padding: 16,
-    height: 160,
-    justifyContent: "space-between",
-  },
-  singleTypeCard: {
-    marginTop: 16,
-  },
-  selectedTypeCard: {
-    borderWidth: 2,
-    borderColor: "#4F46E5",
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   typeHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
   },
-  checkContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#4F46E5",
-    alignItems: "center",
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  typeTextContainer: {
+    flex: 1,
   },
   typeTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: "#1F2937",
+    marginBottom: 4,
   },
   typeDescription: {
     fontSize: 14,
     color: "#4B5563",
-    marginTop: 8,
   },
-  iconContainer: {
-    alignItems: "flex-end",
-    justifyContent: "flex-end",
-    flex: 1,
-  },
-  iconPlaceholder: {
-    fontSize: 32,
-    color: "#4B5563",
+  checkContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
   },
   footer: {
     padding: 20,
