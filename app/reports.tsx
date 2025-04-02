@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   ScrollView,
   Dimensions,
   StyleSheet,
+  Animated,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -18,8 +20,17 @@ import {
   Award,
   Calendar,
   BarChart,
+  ChevronRight,
+  Target,
+  AlertTriangle,
+  Check,
+  Info,
+  Star,
+  Trophy,
+  Repeat,
 } from "lucide-react-native";
 import { useAppContext } from "./context/AppContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function ReportsScreen() {
   const router = useRouter();
@@ -96,330 +107,830 @@ export default function ReportsScreen() {
     ],
   };
 
-  const renderDailyReport = () => (
-    <View style={styles.tabContent}>
-      {/* Date Display */}
-      <View style={styles.dateContainer}>
-        <Calendar size={18} color="#4F46E5" />
-        <Text style={styles.dateText}>{dailyData.date}</Text>
-      </View>
+  const renderDailyReport = () => {
+    // Animation values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+    
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
 
-      {/* Daily Stats */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <BookOpen size={20} color="#3b82f6" />
-          </View>
-          <Text style={styles.statValue}>{dailyData.totalQuestions}</Text>
-          <Text style={styles.statLabel}>Questions</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <TrendingUp size={20} color="#10b981" />
-          </View>
-          <Text style={styles.statValue}>
-            {Math.round((dailyData.correctAnswers / dailyData.totalQuestions) * 100)}%
-          </Text>
-          <Text style={styles.statLabel}>Accuracy</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Clock size={20} color="#8b5cf6" />
-          </View>
-          <Text style={styles.statValue}>{dailyData.averageTime}s</Text>
-          <Text style={styles.statLabel}>Avg Time</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Clock size={20} color="#f97316" />
-          </View>
-          <Text style={styles.statValue}>{dailyData.studyTime}h</Text>
-          <Text style={styles.statLabel}>Study Time</Text>
-        </View>
-      </View>
+    // Calculate performance metrics
+    const accuracy = Math.round((dailyData.correctAnswers / dailyData.totalQuestions) * 100);
+    const grade = accuracy >= 90 ? 'A' : accuracy >= 80 ? 'B' : accuracy >= 70 ? 'C' : accuracy >= 60 ? 'D' : 'F';
+    const gradeColor = accuracy >= 90 ? "#10B981" : accuracy >= 80 ? "#3B82F6" : accuracy >= 70 ? "#F59E0B" : accuracy >= 60 ? "#F97316" : "#EF4444";
+    
+    // Today's insights based on data
+    const insights = [
+      {
+        icon: <Trophy size={18} color="#F59E0B" />,
+        text: accuracy > 80 ? "Great job! Your accuracy is impressive today." : "Keep practicing to improve your accuracy.",
+      },
+      {
+        icon: <Clock size={18} color="#8B5CF6" />,
+        text: dailyData.averageTime < 40 ? "You're responding quickly to questions!" : "Try to improve your response time.",
+      },
+      {
+        icon: <Info size={18} color="#3B82F6" />,
+        text: dailyData.studyTime > 2 ? "You're putting in good study hours today." : "Try to increase your study time for better results.",
+      },
+    ];
 
-      {/* Today's Study Sessions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Today's Study Sessions</Text>
-        {dailyData.sessions.map((session, index) => (
-          <View key={index} style={styles.sessionCard}>
-            <View style={styles.sessionHeader}>
-              <Text style={styles.sessionTime}>{session.time}</Text>
-              <View style={styles.sessionScoreContainer}>
-                <Text style={styles.sessionScore}>{session.score}%</Text>
+    // Calculate study time distribution
+    const totalMinutes = dailyData.studyTime * 60;
+    const sessionsTimeSum = dailyData.sessions.reduce((sum, session) => sum + session.duration, 0);
+    const breakTime = Math.max(0, totalMinutes - sessionsTimeSum);
+    const timeDistribution = [
+      { label: "Active Learning", value: sessionsTimeSum, color: "#4F46E5" },
+      { label: "Breaks", value: breakTime, color: "#F59E0B" },
+    ];
+    const maxBarWidth = Dimensions.get("window").width - 120;
+
+    return (
+      <Animated.View 
+        style={[
+          styles.tabContent, 
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}
+      >
+        {/* Date Display with Enhanced UI */}
+        <View style={styles.dateContainer}>
+          <LinearGradient
+            colors={['#4F46E5', '#818CF8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.dateBadge}
+          >
+            <Calendar size={16} color="#FFF" />
+            <Text style={styles.dateTextEnhanced}>{dailyData.date}</Text>
+          </LinearGradient>
+        </View>
+
+        {/* Performance Score Card */}
+        <View style={styles.scoreCard}>
+          <LinearGradient
+            colors={['#F9FAFB', '#F3F4F6']}
+            style={styles.scoreCardGradient}
+          >
+            <View style={styles.scoreHeader}>
+              <Text style={styles.scoreTitle}>Today's Performance</Text>
+              <View style={[styles.gradeBadge, { backgroundColor: gradeColor }]}>
+                <Text style={styles.gradeText}>{grade}</Text>
               </View>
             </View>
-            <Text style={styles.sessionDuration}>{session.duration} minutes</Text>
-          </View>
-        ))}
-      </View>
+            
+            <View style={styles.scoreContent}>
+              <View style={styles.scoreCircle}>
+                <Text style={styles.scorePercentage}>{accuracy}%</Text>
+                <Text style={styles.scoreLabel}>Accuracy</Text>
+              </View>
+              
+              <View style={styles.scoreMetrics}>
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <BookOpen size={16} color="#3B82F6" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{dailyData.totalQuestions}</Text>
+                    <Text style={styles.metricLabel}>Questions</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Check size={16} color="#10B981" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{dailyData.correctAnswers}</Text>
+                    <Text style={styles.metricLabel}>Correct</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Clock size={16} color="#8B5CF6" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{dailyData.averageTime}s</Text>
+                    <Text style={styles.metricLabel}>Avg Time</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Repeat size={16} color="#F97316" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{dailyData.studyTime}h</Text>
+                    <Text style={styles.metricLabel}>Study Time</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
 
-      {/* Topics Studied Today */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Topics Studied Today</Text>
-        <View style={styles.topicsContainer}>
-          {dailyData.topicsStudied.map((topic, index) => (
-            <View key={index} style={styles.topicPill}>
-              <Text style={styles.topicText}>{topic}</Text>
+        {/* Insights Card */}
+        <View style={styles.insightsCard}>
+          <Text style={styles.insightsTitle}>Today's Insights</Text>
+          {insights.map((insight, index) => (
+            <View key={index} style={styles.insightItem}>
+              <View style={styles.insightIcon}>{insight.icon}</View>
+              <Text style={styles.insightText}>{insight.text}</Text>
             </View>
           ))}
         </View>
-      </View>
-    </View>
-  );
 
-  const renderWeeklyReport = () => (
-    <View style={styles.tabContent}>
-      {/* Date Range Display */}
-      <View style={styles.dateContainer}>
-        <Calendar size={18} color="#4F46E5" />
-        <Text style={styles.dateText}>{weeklyData.dateRange}</Text>
-      </View>
-
-      {/* Weekly Stats */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <BookOpen size={20} color="#3b82f6" />
-          </View>
-          <Text style={styles.statValue}>{weeklyData.totalQuestions}</Text>
-          <Text style={styles.statLabel}>Questions</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <TrendingUp size={20} color="#10b981" />
-          </View>
-          <Text style={styles.statValue}>
-            {Math.round((weeklyData.correctAnswers / weeklyData.totalQuestions) * 100)}%
-          </Text>
-          <Text style={styles.statLabel}>Accuracy</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Clock size={20} color="#8b5cf6" />
-          </View>
-          <Text style={styles.statValue}>{weeklyData.averageTime}s</Text>
-          <Text style={styles.statLabel}>Avg Time</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Clock size={20} color="#f97316" />
-          </View>
-          <Text style={styles.statValue}>{weeklyData.studyTime}h</Text>
-          <Text style={styles.statLabel}>Study Time</Text>
-        </View>
-      </View>
-
-      {/* Daily Breakdown */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Daily Breakdown</Text>
-        <View style={styles.chartContainer}>
-          {weeklyData.dailyBreakdown.map((day, index) => (
-            <View key={index} style={styles.chartColumn}>
-              <View style={styles.barContainer}>
+        {/* Study Time Distribution */}
+        <View style={styles.distributionCard}>
+          <Text style={styles.distributionTitle}>Study Time Distribution</Text>
+          {timeDistribution.map((item, index) => (
+            <View key={index} style={styles.distributionItem}>
+              <View style={styles.distributionLabelContainer}>
+                <View style={[styles.distributionColorDot, { backgroundColor: item.color }]} />
+                <Text style={styles.distributionLabel}>{item.label}</Text>
+                <Text style={styles.distributionValue}>{item.value} min</Text>
+              </View>
+              <View style={styles.distributionBarContainer}>
                 <View 
                   style={[
-                    styles.accuracyBar, 
-                    { height: day.accuracy * 1.5 } // Scale height based on accuracy
-                  ]}
-                />
-                <View 
-                  style={[
-                    styles.questionsIndicator,
-                    { bottom: day.questions * 1.5 } // Position indicator based on questions
-                  ]}
+                    styles.distributionBar, 
+                    { 
+                      width: (item.value / totalMinutes) * maxBarWidth,
+                      backgroundColor: item.color
+                    }
+                  ]} 
                 />
               </View>
-              <Text style={styles.chartLabel}>{day.day}</Text>
             </View>
           ))}
         </View>
-        <View style={styles.chartLegend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#4F46E5" }]} />
-            <Text style={styles.legendText}>Accuracy</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendColor, { backgroundColor: "#F97316" }]} />
-            <Text style={styles.legendText}>Questions</Text>
-          </View>
-        </View>
-      </View>
 
-      {/* Weak Topics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Areas for Improvement</Text>
-        {weeklyData.weakTopics.map((topic, index) => (
-          <View key={index} style={styles.topicCard}>
-            <View style={styles.topicHeader}>
-              <Text style={styles.topicName}>{topic.name}</Text>
-              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
+        {/* Today's Study Sessions - Enhanced */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderEnhanced}>
+            <Text style={styles.sectionTitleEnhanced}>Study Sessions</Text>
+            <Text style={styles.sectionSubtitle}>{dailyData.sessions.length} sessions today</Text>
+          </View>
+          
+          {dailyData.sessions.map((session, index) => (
+            <View key={index} style={styles.sessionCardEnhanced}>
+              <View style={styles.sessionTimeContainer}>
+                <Clock size={14} color="#6B7280" />
+                <Text style={styles.sessionTimeText}>{session.time}</Text>
+              </View>
+              
+              <View style={styles.sessionDetails}>
+                <View style={styles.sessionDurationBadge}>
+                  <Text style={styles.sessionDurationText}>{session.duration} min</Text>
+                </View>
+                
+                <View style={[
+                  styles.sessionScoreBadge, 
+                  { 
+                    backgroundColor: session.score >= 90 ? "#DCFCE7" : session.score >= 70 ? "#FEF3C7" : "#FEE2E2",
+                    borderColor: session.score >= 90 ? "#10B981" : session.score >= 70 ? "#F59E0B" : "#EF4444",
+                  }
+                ]}>
+                  <Text style={[
+                    styles.sessionScoreText,
+                    { color: session.score >= 90 ? "#10B981" : session.score >= 70 ? "#F59E0B" : "#EF4444" }
+                  ]}>{session.score}%</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${topic.accuracy}%`, backgroundColor: "#EF4444" }
-                ]} 
-              />
+          ))}
+        </View>
+
+        {/* Topics Studied Today - Enhanced */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderEnhanced}>
+            <Text style={styles.sectionTitleEnhanced}>Topics Covered</Text>
+            <Text style={styles.sectionSubtitle}>{dailyData.topicsStudied.length} topics</Text>
+          </View>
+          
+          <View style={styles.topicsContainerEnhanced}>
+            {dailyData.topicsStudied.map((topic, index) => (
+              <View key={index} style={styles.topicPillEnhanced}>
+                <BookOpen size={14} color="#4F46E5" />
+                <Text style={styles.topicTextEnhanced}>{topic}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Animated.View>
+    );
+  };
+
+  const renderWeeklyReport = () => {
+    // Animation values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+    
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    // Calculate weekly performance metrics
+    const weeklyAccuracy = Math.round((weeklyData.correctAnswers / weeklyData.totalQuestions) * 100);
+    const weeklyGrade = weeklyAccuracy >= 90 ? 'A' : weeklyAccuracy >= 80 ? 'B' : weeklyAccuracy >= 70 ? 'C' : weeklyAccuracy >= 60 ? 'D' : 'F';
+    const weeklyGradeColor = weeklyAccuracy >= 90 ? "#10B981" : weeklyAccuracy >= 80 ? "#3B82F6" : weeklyAccuracy >= 70 ? "#F59E0B" : weeklyAccuracy >= 60 ? "#F97316" : "#EF4444";
+    
+    // Find best and worst day
+    const bestDay = [...weeklyData.dailyBreakdown].sort((a, b) => b.accuracy - a.accuracy)[0];
+    const worstDay = [...weeklyData.dailyBreakdown].sort((a, b) => a.accuracy - b.accuracy)[0];
+    
+    // Calculate trends
+    const averageQuestions = Math.round(weeklyData.totalQuestions / 7);
+    const questionsToday = weeklyData.dailyBreakdown[6].questions;
+    const questionsYesterday = weeklyData.dailyBreakdown[5].questions;
+    const questionsTrend = questionsToday > averageQuestions ? "up" : "down";
+    
+    const accuracyToday = weeklyData.dailyBreakdown[6].accuracy;
+    const accuracyYesterday = weeklyData.dailyBreakdown[5].accuracy;
+    const accuracyTrend = accuracyToday > accuracyYesterday ? "up" : "down";
+    
+    // Weekly insights
+    const weeklyInsights = [
+      {
+        icon: <Star size={18} color="#F59E0B" />,
+        text: `Your best day was ${bestDay.day} with ${bestDay.accuracy}% accuracy.`,
+      },
+      {
+        icon: <AlertTriangle size={18} color="#EF4444" />,
+        text: `Your most challenging day was ${worstDay.day} with ${worstDay.accuracy}% accuracy.`,
+      },
+      {
+        icon: <TrendingUp size={18} color={questionsTrend === "up" ? "#10B981" : "#EF4444"} />,
+        text: `You attempted ${questionsToday > averageQuestions ? "more" : "fewer"} questions than your weekly average.`,
+      },
+    ];
+
+    return (
+      <Animated.View 
+        style={[
+          styles.tabContent, 
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}
+      >
+        {/* Date Range Display */}
+        <View style={styles.dateContainer}>
+          <LinearGradient
+            colors={['#4F46E5', '#818CF8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.dateBadge}
+          >
+            <Calendar size={16} color="#FFF" />
+            <Text style={styles.dateTextEnhanced}>{weeklyData.dateRange}</Text>
+          </LinearGradient>
+        </View>
+
+        {/* Weekly Performance Score Card */}
+        <View style={styles.scoreCard}>
+          <LinearGradient
+            colors={['#F9FAFB', '#F3F4F6']}
+            style={styles.scoreCardGradient}
+          >
+            <View style={styles.scoreHeader}>
+              <Text style={styles.scoreTitle}>Weekly Performance</Text>
+              <View style={[styles.gradeBadge, { backgroundColor: weeklyGradeColor }]}>
+                <Text style={styles.gradeText}>{weeklyGrade}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.scoreContent}>
+              <View style={styles.scoreCircle}>
+                <Text style={styles.scorePercentage}>{weeklyAccuracy}%</Text>
+                <Text style={styles.scoreLabel}>Accuracy</Text>
+              </View>
+              
+              <View style={styles.scoreMetrics}>
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <BookOpen size={16} color="#3B82F6" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{weeklyData.totalQuestions}</Text>
+                    <Text style={styles.metricLabel}>Questions</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Check size={16} color="#10B981" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{weeklyData.correctAnswers}</Text>
+                    <Text style={styles.metricLabel}>Correct</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Clock size={16} color="#8B5CF6" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{weeklyData.averageTime}s</Text>
+                    <Text style={styles.metricLabel}>Avg Time</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Repeat size={16} color="#F97316" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{weeklyData.studyTime}h</Text>
+                    <Text style={styles.metricLabel}>Study Time</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Weekly Insights */}
+        <View style={styles.insightsCard}>
+          <Text style={styles.insightsTitle}>Weekly Insights</Text>
+          {weeklyInsights.map((insight, index) => (
+            <View key={index} style={styles.insightItem}>
+              <View style={styles.insightIcon}>{insight.icon}</View>
+              <Text style={styles.insightText}>{insight.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Enhanced Daily Breakdown */}
+        <View style={styles.weeklyChartCard}>
+          <Text style={styles.weeklyChartTitle}>Daily Performance</Text>
+          
+          <View style={styles.chartLegendEnhanced}>
+            <View style={styles.legendItemEnhanced}>
+              <View style={[styles.legendColorEnhanced, { backgroundColor: "#4F46E5" }]} />
+              <Text style={styles.legendTextEnhanced}>Accuracy</Text>
+            </View>
+            <View style={styles.legendItemEnhanced}>
+              <View style={[styles.legendColorEnhanced, { backgroundColor: "#F97316" }]} />
+              <Text style={styles.legendTextEnhanced}>Questions</Text>
             </View>
           </View>
-        ))}
-      </View>
+          
+          <View style={styles.chartContainerEnhanced}>
+            {weeklyData.dailyBreakdown.map((day, index) => (
+              <View key={index} style={styles.chartColumnEnhanced}>
+                <View style={styles.barContainerEnhanced}>
+                  <View 
+                    style={[
+                      styles.accuracyBarEnhanced, 
+                      { 
+                        height: day.accuracy * 1.2,
+                        backgroundColor: day.accuracy > 80 ? "#4F46E5" : day.accuracy > 60 ? "#818CF8" : "#C7D2FE"
+                      }
+                    ]}
+                  />
+                  
+                  <View 
+                    style={[
+                      styles.questionsIndicatorEnhanced,
+                      { 
+                        bottom: day.questions * 1.5,
+                        width: day.questions / 2,
+                        height: day.questions / 2,
+                        maxWidth: 20,
+                        maxHeight: 20,
+                        minWidth: 10,
+                        minHeight: 10,
+                      }
+                    ]}
+                  />
+                </View>
+                <Text style={styles.chartLabelEnhanced}>{day.day}</Text>
+                <Text style={styles.chartValueEnhanced}>{day.accuracy}%</Text>
+              </View>
+            ))}
+          </View>
+        </View>
 
-      {/* Strong Topics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Strong Areas</Text>
-        {weeklyData.strongTopics.map((topic, index) => (
-          <View key={index} style={styles.topicCard}>
-            <View style={styles.topicHeader}>
-              <Text style={styles.topicName}>{topic.name}</Text>
-              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
+        {/* Weak Topics - Enhanced */}
+        <View style={styles.topicsCardEnhanced}>
+          <View style={styles.topicsHeaderEnhanced}>
+            <AlertTriangle size={20} color="#EF4444" />
+            <Text style={styles.topicsTitle}>Areas for Improvement</Text>
+          </View>
+          
+          {weeklyData.weakTopics.map((topic, index) => (
+            <View key={index} style={styles.topicItemEnhanced}>
+              <View style={styles.topicHeaderEnhanced}>
+                <Text style={styles.topicNameEnhanced}>{topic.name}</Text>
+                <View style={[styles.topicBadgeEnhanced, { backgroundColor: "#FEE2E2", borderColor: "#EF4444" }]}>
+                  <Text style={[styles.topicBadgeTextEnhanced, { color: "#EF4444" }]}>{topic.accuracy}%</Text>
+                </View>
+              </View>
+              
+              <View style={styles.topicProgressContainer}>
+                <View style={styles.topicProgressBackground}>
+                  <LinearGradient
+                    colors={['#FECACA', '#FEF2F2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.topicProgressFill, 
+                      { width: `${topic.accuracy}%` }
+                    ]} 
+                  />
+                </View>
+                
+                <View style={styles.topicProgressMarkersContainer}>
+                  <View style={[styles.topicProgressMarker, { left: '70%' }]}>
+                    <Text style={styles.topicProgressMarkerText}>70%</Text>
+                  </View>
+                  <View style={[styles.topicProgressMarker, { left: '85%' }]}>
+                    <Text style={styles.topicProgressMarkerText}>85%</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.topicActionContainer}>
+                <TouchableOpacity style={styles.topicActionButton}>
+                  <Text style={styles.topicActionText}>Practice This Topic</Text>
+                  <ChevronRight size={16} color="#4F46E5" />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${topic.accuracy}%`, backgroundColor: "#10B981" }
-                ]} 
-              />
+          ))}
+        </View>
+
+        {/* Strong Topics - Enhanced */}
+        <View style={styles.topicsCardEnhanced}>
+          <View style={styles.topicsHeaderEnhanced}>
+            <Trophy size={20} color="#10B981" />
+            <Text style={styles.topicsTitle}>Strong Areas</Text>
+          </View>
+          
+          {weeklyData.strongTopics.map((topic, index) => (
+            <View key={index} style={styles.topicItemEnhanced}>
+              <View style={styles.topicHeaderEnhanced}>
+                <Text style={styles.topicNameEnhanced}>{topic.name}</Text>
+                <View style={[styles.topicBadgeEnhanced, { backgroundColor: "#D1FAE5", borderColor: "#10B981" }]}>
+                  <Text style={[styles.topicBadgeTextEnhanced, { color: "#10B981" }]}>{topic.accuracy}%</Text>
+                </View>
+              </View>
+              
+              <View style={styles.topicProgressContainer}>
+                <View style={styles.topicProgressBackground}>
+                  <LinearGradient
+                    colors={['#10B981', '#D1FAE5']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.topicProgressFill, 
+                      { width: `${topic.accuracy}%` }
+                    ]} 
+                  />
+                </View>
+                
+                <View style={styles.topicProgressMarkersContainer}>
+                  <View style={[styles.topicProgressMarker, { left: '70%' }]}>
+                    <Text style={styles.topicProgressMarkerText}>70%</Text>
+                  </View>
+                  <View style={[styles.topicProgressMarker, { left: '85%' }]}>
+                    <Text style={styles.topicProgressMarkerText}>85%</Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.topicActionContainer}>
+                <TouchableOpacity style={styles.topicActionButton}>
+                  <Text style={styles.topicActionText}>Review Material</Text>
+                  <ChevronRight size={16} color="#4F46E5" />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+          ))}
+        </View>
+      </Animated.View>
+    );
+  };
 
-  const renderMonthlyReport = () => (
-    <View style={styles.tabContent}>
-      {/* Month Display */}
-      <View style={styles.dateContainer}>
-        <Calendar size={18} color="#4F46E5" />
-        <Text style={styles.dateText}>{monthlyData.month}</Text>
-      </View>
+  const renderMonthlyReport = () => {
+    // Animation values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+    
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
 
-      {/* Monthly Stats */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <BookOpen size={20} color="#3b82f6" />
-          </View>
-          <Text style={styles.statValue}>{monthlyData.totalQuestions}</Text>
-          <Text style={styles.statLabel}>Questions</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <TrendingUp size={20} color="#10b981" />
-          </View>
-          <Text style={styles.statValue}>
-            {Math.round((monthlyData.correctAnswers / monthlyData.totalQuestions) * 100)}%
-          </Text>
-          <Text style={styles.statLabel}>Accuracy</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Zap size={20} color="#8b5cf6" />
-          </View>
-          <Text style={styles.statValue}>{monthlyData.longestStreak}</Text>
-          <Text style={styles.statLabel}>Longest Streak</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Clock size={20} color="#f97316" />
-          </View>
-          <Text style={styles.statValue}>{monthlyData.studyTime}h</Text>
-          <Text style={styles.statLabel}>Study Time</Text>
-        </View>
-      </View>
+    // Calculate monthly performance metrics
+    const monthlyAccuracy = Math.round((monthlyData.correctAnswers / monthlyData.totalQuestions) * 100);
+    const monthlyGrade = monthlyAccuracy >= 90 ? 'A' : monthlyAccuracy >= 80 ? 'B' : monthlyAccuracy >= 70 ? 'C' : monthlyAccuracy >= 60 ? 'D' : 'F';
+    const monthlyGradeColor = monthlyAccuracy >= 90 ? "#10B981" : monthlyAccuracy >= 80 ? "#3B82F6" : monthlyAccuracy >= 70 ? "#F59E0B" : monthlyAccuracy >= 60 ? "#F97316" : "#EF4444";
+    
+    // Calculate questions per day on average
+    const daysInMonth = 30; // Approximate
+    const questionsPerDay = (monthlyData.totalQuestions / daysInMonth).toFixed(1);
+    
+    // Find best and worst week
+    const bestWeek = [...monthlyData.weeklyBreakdown].sort((a, b) => b.accuracy - a.accuracy)[0];
+    const worstWeek = [...monthlyData.weeklyBreakdown].sort((a, b) => a.accuracy - b.accuracy)[0];
+    
+    // Calculate trend between first and last week
+    const firstWeekAccuracy = monthlyData.weeklyBreakdown[0].accuracy;
+    const lastWeekAccuracy = monthlyData.weeklyBreakdown[monthlyData.weeklyBreakdown.length - 1].accuracy;
+    const overallTrend = lastWeekAccuracy > firstWeekAccuracy ? "improved" : "declined";
+    const trendPercentage = Math.abs(lastWeekAccuracy - firstWeekAccuracy);
+    
+    // Monthly insights
+    const monthlyInsights = [
+      {
+        icon: <TrendingUp size={18} color={overallTrend === "improved" ? "#10B981" : "#EF4444"} />,
+        text: `Your performance has ${overallTrend} by ${trendPercentage}% from the start of the month.`,
+      },
+      {
+        icon: <Trophy size={18} color="#F59E0B" />,
+        text: `Your strongest week was ${bestWeek.week} with ${bestWeek.accuracy}% accuracy.`,
+      },
+      {
+        icon: <Target size={18} color="#3B82F6" />,
+        text: `You averaged ${questionsPerDay} questions per day this month.`,
+      },
+    ];
 
-      {/* Improvement Highlight */}
-      <View style={styles.section}>
-        <View style={styles.improvementCard}>
-          <View style={styles.improvementHeader}>
-            <BarChart size={24} color="#4F46E5" />
-            <Text style={styles.improvementTitle}>Monthly Progress</Text>
-          </View>
-          <Text style={styles.improvementValue}>+{monthlyData.improvement}%</Text>
-          <Text style={styles.improvementDescription}>
-            Your performance has improved {monthlyData.improvement}% compared to last month
-          </Text>
+    return (
+      <Animated.View 
+        style={[
+          styles.tabContent, 
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}
+      >
+        {/* Month Display */}
+        <View style={styles.dateContainer}>
+          <LinearGradient
+            colors={['#4F46E5', '#818CF8']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.dateBadge}
+          >
+            <Calendar size={16} color="#FFF" />
+            <Text style={styles.dateTextEnhanced}>{monthlyData.month}</Text>
+          </LinearGradient>
         </View>
-      </View>
 
-      {/* Weekly Breakdown */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Weekly Breakdown</Text>
-        {monthlyData.weeklyBreakdown.map((week, index) => (
-          <View key={index} style={styles.weekCard}>
-            <View style={styles.weekHeader}>
-              <Text style={styles.weekName}>{week.week}</Text>
-              <Text style={styles.weekStats}>
-                {week.questions} questions | {week.accuracy}% accuracy
+        {/* Monthly Performance Overview */}
+        <View style={styles.scoreCard}>
+          <LinearGradient
+            colors={['#F9FAFB', '#F3F4F6']}
+            style={styles.scoreCardGradient}
+          >
+            <View style={styles.scoreHeader}>
+              <Text style={styles.scoreTitle}>Monthly Overview</Text>
+              <View style={[styles.gradeBadge, { backgroundColor: monthlyGradeColor }]}>
+                <Text style={styles.gradeText}>{monthlyGrade}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.scoreContent}>
+              <View style={styles.scoreCircle}>
+                <Text style={styles.scorePercentage}>{monthlyAccuracy}%</Text>
+                <Text style={styles.scoreLabel}>Accuracy</Text>
+              </View>
+              
+              <View style={styles.scoreMetrics}>
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <BookOpen size={16} color="#3B82F6" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{monthlyData.totalQuestions}</Text>
+                    <Text style={styles.metricLabel}>Questions</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Zap size={16} color="#8B5CF6" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{monthlyData.longestStreak}</Text>
+                    <Text style={styles.metricLabel}>Longest Streak</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Clock size={16} color="#F97316" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>{monthlyData.studyTime}h</Text>
+                    <Text style={styles.metricLabel}>Study Time</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.scoreMetricItem}>
+                  <View style={styles.metricIconContainer}>
+                    <Award size={16} color="#F59E0B" />
+                  </View>
+                  <View>
+                    <Text style={styles.metricValue}>+{monthlyData.improvement}%</Text>
+                    <Text style={styles.metricLabel}>Improvement</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Progress Card */}
+        <View style={styles.monthlyProgressCard}>
+          <View style={styles.monthlyProgressHeader}>
+            <View style={styles.monthlyProgressIcon}>
+              <TrendingUp size={24} color="#4F46E5" />
+            </View>
+            <View>
+              <Text style={styles.monthlyProgressTitle}>Your Progress</Text>
+              <Text style={styles.monthlyProgressSubtitle}>
+                {overallTrend === "improved" ? "Keep it up!" : "Room for improvement"}
               </Text>
             </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${week.accuracy}%`, backgroundColor: "#4F46E5" }
-                ]} 
-              />
-            </View>
           </View>
-        ))}
-      </View>
+          
+          <View style={styles.monthlyProgressValue}>
+            <Text style={[
+              styles.monthlyProgressPercentage,
+              { color: overallTrend === "improved" ? "#10B981" : "#EF4444" }
+            ]}>
+              {overallTrend === "improved" ? "+" : "-"}{trendPercentage}%
+            </Text>
+            <Text style={styles.monthlyProgressDescription}>
+              {overallTrend === "improved" 
+                ? "Your performance has improved compared to last month" 
+                : "Your performance has declined compared to last month"}
+            </Text>
+          </View>
+          
+          <Image 
+            source={{ 
+              uri: overallTrend === "improved" 
+                ? "https://cdn3d.iconscout.com/3d/premium/thumb/increase-business-growth-5626315-4699372.png" 
+                : "https://cdn3d.iconscout.com/3d/premium/thumb/business-loss-5600739-4686609.png" 
+            }} 
+            style={styles.progressImage} 
+          />
+        </View>
 
-      {/* Weak & Strong Topics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Performance by Topic</Text>
-        
-        <Text style={styles.subSectionTitle}>Areas for Improvement</Text>
-        {monthlyData.weakTopics.map((topic, index) => (
-          <View key={index} style={styles.topicCard}>
-            <View style={styles.topicHeader}>
-              <Text style={styles.topicName}>{topic.name}</Text>
-              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
+        {/* Monthly Insights */}
+        <View style={styles.insightsCard}>
+          <Text style={styles.insightsTitle}>Monthly Insights</Text>
+          {monthlyInsights.map((insight, index) => (
+            <View key={index} style={styles.insightItem}>
+              <View style={styles.insightIcon}>{insight.icon}</View>
+              <Text style={styles.insightText}>{insight.text}</Text>
             </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${topic.accuracy}%`, backgroundColor: "#EF4444" }
-                ]} 
-              />
+          ))}
+        </View>
+
+        {/* Weekly Breakdown - Enhanced */}
+        <View style={styles.monthlyBreakdownCard}>
+          <Text style={styles.monthlyBreakdownTitle}>Weekly Performance</Text>
+          
+          {monthlyData.weeklyBreakdown.map((week, index) => (
+            <View key={index} style={styles.weekItemEnhanced}>
+              <View style={styles.weekHeaderEnhanced}>
+                <View style={styles.weekLabelContainer}>
+                  <Calendar size={14} color="#4B5563" />
+                  <Text style={styles.weekNameEnhanced}>{week.week}</Text>
+                </View>
+                <View style={styles.weekStatsContainer}>
+                  <Text style={styles.weekQuestionsEnhanced}>{week.questions}</Text>
+                  <Text style={styles.weekStatsEnhanced}>questions</Text>
+                </View>
+              </View>
+              
+              <View style={styles.weekProgressContainer}>
+                <View style={styles.weekProgressBackground}>
+                  <LinearGradient
+                    colors={week.accuracy >= 80 ? ['#10B981', '#D1FAE5'] : week.accuracy >= 70 ? ['#F59E0B', '#FEF3C7'] : ['#EF4444', '#FEE2E2']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.weekProgressFill, 
+                      { width: `${week.accuracy}%` }
+                    ]} 
+                  />
+                </View>
+                
+                <View style={styles.weekProgressLabelsContainer}>
+                  <Text style={styles.weekProgressAccuracy}>{week.accuracy}%</Text>
+                  <Text style={styles.weekProgressLabel}>accuracy</Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Topic Analysis - Enhanced */}
+        <View style={styles.monthlyTopicsCard}>
+          <Text style={styles.monthlyTopicsTitle}>Subject Analysis</Text>
+          
+          <View style={styles.monthlyTopicsColumns}>
+            <View style={styles.monthlyTopicsColumn}>
+              <LinearGradient
+                colors={['#FEE2E2', '#FFF']}
+                style={styles.monthlyTopicColumnHeader}
+              >
+                <AlertTriangle size={16} color="#EF4444" />
+                <Text style={styles.monthlyTopicColumnTitle}>Needs Improvement</Text>
+              </LinearGradient>
+              
+              {monthlyData.weakTopics.map((topic, index) => (
+                <View key={index} style={styles.monthlyTopicItem}>
+                  <Text style={styles.monthlyTopicName} numberOfLines={1}>{topic.name}</Text>
+                  <Text style={[styles.monthlyTopicAccuracy, { color: "#EF4444" }]}>{topic.accuracy}%</Text>
+                </View>
+              ))}
+            </View>
+            
+            <View style={styles.monthlyTopicsColumn}>
+              <LinearGradient
+                colors={['#D1FAE5', '#FFF']}
+                style={styles.monthlyTopicColumnHeader}
+              >
+                <Trophy size={16} color="#10B981" />
+                <Text style={styles.monthlyTopicColumnTitle}>Strong Subjects</Text>
+              </LinearGradient>
+              
+              {monthlyData.strongTopics.map((topic, index) => (
+                <View key={index} style={styles.monthlyTopicItem}>
+                  <Text style={styles.monthlyTopicName} numberOfLines={1}>{topic.name}</Text>
+                  <Text style={[styles.monthlyTopicAccuracy, { color: "#10B981" }]}>{topic.accuracy}%</Text>
+                </View>
+              ))}
             </View>
           </View>
-        ))}
-        
-        <Text style={styles.subSectionTitle}>Strong Areas</Text>
-        {monthlyData.strongTopics.map((topic, index) => (
-          <View key={index} style={styles.topicCard}>
-            <View style={styles.topicHeader}>
-              <Text style={styles.topicName}>{topic.name}</Text>
-              <Text style={styles.topicAccuracy}>{topic.accuracy}%</Text>
+        </View>
+
+        {/* Recommendation Card */}
+        <View style={styles.recommendationCard}>
+          <LinearGradient
+            colors={['#EEF2FF', '#FFFFFF']}
+            style={styles.recommendationGradient}
+          >
+            <View style={styles.recommendationHeader}>
+              <Info size={24} color="#4F46E5" />
+              <Text style={styles.recommendationTitle}>Study Recommendations</Text>
             </View>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${topic.accuracy}%`, backgroundColor: "#10B981" }
-                ]} 
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
+            
+            <Text style={styles.recommendationText}>
+              Based on your monthly data, we recommend focusing more on:{' '}
+              <Text style={styles.recommendationHighlight}>{monthlyData.weakTopics[0].name}</Text>.
+              Your consistency has been {monthlyData.longestStreak > 14 ? 'excellent' : 'good'}, but you can improve by studying{' '}
+              <Text style={styles.recommendationHighlight}>{worstWeek.week.toLowerCase()}</Text> more.
+            </Text>
+            
+            <TouchableOpacity style={styles.recommendationButton}>
+              <Text style={styles.recommendationButtonText}>View Detailed Plan</Text>
+              <ChevronRight size={18} color="#FFF" />
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -800,5 +1311,687 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     lineHeight: 20,
+  },
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  dateTextEnhanced: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFF",
+  },
+  scoreCard: {
+    marginBottom: 24,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  scoreCardGradient: {
+    borderRadius: 16,
+    padding: 16,
+  },
+  scoreHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  scoreTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  gradeBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gradeText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  scoreContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  scoreCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#4F46E5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  scorePercentage: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "white",
+  },
+  scoreLabel: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+  },
+  scoreMetrics: {
+    flex: 1,
+    flexWrap: "wrap",
+    flexDirection: "row",
+  },
+  scoreMetricItem: {
+    width: "50%",
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  metricIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  insightsCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  insightsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  insightItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  insightIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "white",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  insightText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#4B5563",
+    lineHeight: 20,
+  },
+  distributionCard: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  distributionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  distributionItem: {
+    marginBottom: 12,
+  },
+  distributionLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  distributionColorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  distributionLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: "#4B5563",
+  },
+  distributionValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  distributionBarContainer: {
+    height: 8,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  distributionBar: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  sectionHeaderEnhanced: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  sectionTitleEnhanced: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  sessionCardEnhanced: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  sessionTimeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sessionTimeText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  sessionDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sessionDurationBadge: {
+    backgroundColor: "#EEF2FF",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  sessionDurationText: {
+    fontSize: 12,
+    color: "#4F46E5",
+    fontWeight: "500",
+  },
+  sessionScoreBadge: {
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+  },
+  sessionScoreText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  topicsContainerEnhanced: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  topicPillEnhanced: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  topicTextEnhanced: {
+    marginLeft: 6,
+    fontSize: 14,
+    color: "#4F46E5",
+    fontWeight: "500",
+  },
+  weeklyChartCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  weeklyChartTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  chartLegendEnhanced: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  legendItemEnhanced: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 12,
+  },
+  legendColorEnhanced: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  legendTextEnhanced: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#4B5563",
+  },
+  chartContainerEnhanced: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    height: 200,
+  },
+  chartColumnEnhanced: {
+    alignItems: "center",
+    width: "13%",
+  },
+  barContainerEnhanced: {
+    height: 150,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 8,
+    position: "relative",
+  },
+  accuracyBarEnhanced: {
+    width: "60%",
+    borderRadius: 12,
+  },
+  questionsIndicatorEnhanced: {
+    position: "absolute",
+    borderRadius: 10,
+    backgroundColor: "#F97316",
+    left: "50%",
+    transform: [{ translateX: -8 }],
+  },
+  chartLabelEnhanced: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#4B5563",
+    marginBottom: 2,
+  },
+  chartValueEnhanced: {
+    fontSize: 10,
+    color: "#6B7280",
+  },
+  topicsCardEnhanced: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  topicsHeaderEnhanced: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  topicsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  topicItemEnhanced: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    paddingBottom: 16,
+  },
+  topicHeaderEnhanced: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  topicNameEnhanced: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  topicBadgeEnhanced: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  topicBadgeTextEnhanced: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  topicProgressContainer: {
+    marginBottom: 12,
+  },
+  topicProgressBackground: {
+    height: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  topicProgressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  topicProgressMarkersContainer: {
+    position: "relative",
+    height: 20,
+  },
+  topicProgressMarker: {
+    position: "absolute",
+    top: 0,
+    alignItems: "center",
+  },
+  topicProgressMarkerText: {
+    fontSize: 10,
+    color: "#9CA3AF",
+  },
+  topicActionContainer: {
+    alignItems: "flex-end",
+  },
+  topicActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  topicActionText: {
+    fontSize: 12,
+    color: "#4F46E5",
+    fontWeight: "500",
+    marginRight: 4,
+  },
+  monthlyProgressCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  monthlyProgressHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  monthlyProgressIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#EEF2FF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  monthlyProgressTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  monthlyProgressSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  monthlyProgressValue: {
+    marginBottom: 16,
+  },
+  monthlyProgressPercentage: {
+    fontSize: 32,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  monthlyProgressDescription: {
+    fontSize: 14,
+    color: "#4B5563",
+    lineHeight: 20,
+  },
+  progressImage: {
+    width: "100%",
+    height: 120,
+    resizeMode: "contain",
+    marginTop: 16,
+  },
+  monthlyBreakdownCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  monthlyBreakdownTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  weekItemEnhanced: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    paddingBottom: 16,
+  },
+  weekHeaderEnhanced: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  weekLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  weekNameEnhanced: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  weekStatsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  weekQuestionsEnhanced: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginRight: 4,
+  },
+  weekStatsEnhanced: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  weekProgressContainer: {
+    marginBottom: 4,
+  },
+  weekProgressBackground: {
+    height: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  weekProgressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  weekProgressLabelsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  weekProgressAccuracy: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginRight: 4,
+  },
+  weekProgressLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  monthlyTopicsCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  monthlyTopicsTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  monthlyTopicsColumns: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  monthlyTopicsColumn: {
+    width: "48%",
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  monthlyTopicColumnHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    marginBottom: 8,
+  },
+  monthlyTopicColumnTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  monthlyTopicItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  monthlyTopicName: {
+    fontSize: 12,
+    color: "#4B5563",
+    flex: 1,
+    marginRight: 8,
+  },
+  monthlyTopicAccuracy: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  recommendationCard: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  recommendationGradient: {
+    padding: 16,
+  },
+  recommendationHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  recommendationTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  recommendationText: {
+    fontSize: 14,
+    color: "#4B5563",
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  recommendationHighlight: {
+    color: "#4F46E5",
+    fontWeight: "600",
+  },
+  recommendationButton: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  recommendationButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFF",
+    marginRight: 8,
   },
 });
