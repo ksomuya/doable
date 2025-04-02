@@ -56,7 +56,7 @@ export default function SetupScreen() {
     }
     
     // Navigate to the app selection screen
-    router.push("/distraction-blocker/app-selection");
+    router.push("app-selection");
   };
 
   const openAccessibilitySettings = async () => {

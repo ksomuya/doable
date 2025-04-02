@@ -12,11 +12,9 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import {
-  Thermometer,
   Zap,
   ClipboardList,
   ChartBar as BarChart2,
-  Settings,
   Bell,
   ArrowUpRight,
   Focus,
@@ -24,8 +22,6 @@ import {
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
 import UserStats from "./components/UserStats";
-import TemperatureAdjustmentModal from "./components/TemperatureAdjustmentModal";
-import PetDetailModal from "./components/PetDetailModal";
 import { useAppContext } from "./context/AppContext";
 
 export default function HomeScreen() {
@@ -35,16 +31,10 @@ export default function HomeScreen() {
     pet,
     studiedChapters,
     updateStudiedChapters,
-    feedPet,
-    playWithPet,
-    updateTemperature,
-    coolDownPenguin,
     signOut,
     practiceSession,
   } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [showTemperatureModal, setShowTemperatureModal] = useState(false);
-  const [showPetModal, setShowPetModal] = useState(false);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
 
   useEffect(() => {
@@ -53,19 +43,7 @@ export default function HomeScreen() {
       setIsLoading(false);
     }, 1000);
 
-    // Update temperature when component mounts
-    updateTemperature();
-
     return () => clearTimeout(timer);
-  }, []);
-
-  // Check temperature periodically
-  useEffect(() => {
-    const temperatureCheckInterval = setInterval(() => {
-      updateTemperature();
-    }, 60000); // Check every minute
-
-    return () => clearInterval(temperatureCheckInterval);
   }, []);
 
   // Update questions answered from practice session
@@ -94,8 +72,6 @@ export default function HomeScreen() {
   const handleCardPress = (cardType: string) => {
     if (cardType === "Leader Board") {
       router.push("/leaderboard");
-    } else if (cardType === "Custom Test") {
-      router.push("/customtest");
     } else if (cardType === "Reports") {
       router.push("/reports");
     } else if (cardType === "Remove Distractions") {
@@ -105,22 +81,6 @@ export default function HomeScreen() {
 
   const handleChapterSave = (savedChapters: string[]) => {
     updateStudiedChapters(savedChapters);
-  };
-
-  const handleTemperaturePress = () => {
-    setShowTemperatureModal(true);
-  };
-
-  const handlePetInteract = () => {
-    setShowPetModal(true);
-  };
-
-  const handleCoolDown = () => {
-    const success = coolDownPenguin();
-    if (success) {
-      // Close modal after successful cool down
-      setTimeout(() => setShowTemperatureModal(false), 1000);
-    }
   };
 
   const handleSignOut = () => {
@@ -168,49 +128,49 @@ export default function HomeScreen() {
         {/* User Stats */}
         <View style={styles.statsSection}>
           <UserStats
-            temperature={pet.temperature}
             energy={user.xp}
-            snowballs={user.snowballs}
             streak={user.streak}
-            onTemperaturePress={handleTemperaturePress}
             onStreakPress={handleStreakPress}
           />
         </View>
 
         {/* Virtual Pet */}
         <View style={styles.petSection}>
-          <VirtualPet
-            onPetInteract={handlePetInteract}
-            temperature={pet.temperature}
-          />
+          <VirtualPet />
         </View>
 
-        {/* Temperature Adjustment Modal */}
-        <TemperatureAdjustmentModal
-          visible={showTemperatureModal}
-          onClose={() => setShowTemperatureModal(false)}
-          temperature={pet.temperature}
-          snowballs={user.snowballs}
-          onAdjustTemperature={handleCoolDown}
-          adjustmentCost={50}
-        />
-
-        {/* Pet Detail Modal */}
-        <PetDetailModal
-          visible={showPetModal}
-          onClose={() => setShowPetModal(false)}
-          pet={{
-            name: pet.name,
-            health: 85, // Default health value
-            foodLevel: pet.foodLevel,
-            temperature: pet.temperature,
-            mood: pet.mood === "happy" ? 80 : pet.mood === "neutral" ? 50 : 20, // Convert string mood to number
-            age: 14, // Default age value
-          }}
-          onFeed={feedPet}
-          onPlay={playWithPet}
-          snowballs={user.snowballs}
-        />
+        {/* Circular Navigation Buttons */}
+        <View style={styles.circularButtonsContainer}>
+          <View style={styles.buttonWithLabel}>
+            <TouchableOpacity 
+              style={styles.circularButton}
+              onPress={() => handleCardPress("Leader Board")}
+            >
+              <BarChart2 size={24} color="#f97316" />
+            </TouchableOpacity>
+            <Text style={styles.buttonLabel}>Leaderboard</Text>
+          </View>
+          
+          <View style={styles.buttonWithLabel}>
+            <TouchableOpacity 
+              style={styles.circularButton}
+              onPress={() => handleCardPress("Reports")}
+            >
+              <ClipboardList size={24} color="#10b981" />
+            </TouchableOpacity>
+            <Text style={styles.buttonLabel}>Reports</Text>
+          </View>
+          
+          <View style={styles.buttonWithLabel}>
+            <TouchableOpacity 
+              style={styles.circularButton}
+              onPress={() => handleCardPress("Remove Distractions")}
+            >
+              <Focus size={24} color="#3b82f6" />
+            </TouchableOpacity>
+            <Text style={styles.buttonLabel}>Focus</Text>
+          </View>
+        </View>
 
         {/* Chapter Input CTA */}
         <View style={styles.chapterSection}>
@@ -219,82 +179,6 @@ export default function HomeScreen() {
             initialChapters={studiedChapters}
             questionsCompleted={questionsAnswered}
           />
-        </View>
-
-        {/* Bento Box Layout */}
-        <View style={styles.bentoSection}>
-          {/* Side by Side Layout */}
-          <View style={styles.bentoRow}>
-            {/* Left Column - Two Small Boxes */}
-            <View style={styles.bentoLeftColumn}>
-              {/* Leader Board Card */}
-              <TouchableOpacity
-                onPress={() => handleCardPress("Leader Board")}
-                style={[styles.bentoCard, styles.orangeCard]}
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Leader Board</Text>
-                  <View style={styles.iconContainer}>
-                    <ArrowUpRight size={12} color="#000" />
-                  </View>
-                </View>
-                <View style={styles.cardContent}>
-                  <BarChart2 size={28} color="#f97316" />
-                </View>
-              </TouchableOpacity>
-
-              {/* Custom Test Card */}
-              <TouchableOpacity
-                onPress={() => handleCardPress("Custom Test")}
-                style={[styles.bentoCard, styles.purpleCard]}
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Custom Test</Text>
-                  <View style={styles.iconContainer}>
-                    <ArrowUpRight size={12} color="#000" />
-                  </View>
-                </View>
-                <View style={styles.cardContent}>
-                  <Settings size={28} color="#8b5cf6" />
-                </View>
-              </TouchableOpacity>
-            </View>
-
-            {/* Right Column - Two boxes (Reports and Remove Distractions) */}
-            <View style={styles.bentoRightColumn}>
-              {/* Reports Card */}
-              <TouchableOpacity
-                onPress={() => handleCardPress("Reports")}
-                style={[styles.bentoCard, styles.greenCard, styles.mediumCard]}
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Reports</Text>
-                  <View style={styles.iconContainer}>
-                    <ArrowUpRight size={12} color="#000" />
-                  </View>
-                </View>
-                <View style={styles.cardContent}>
-                  <ClipboardList size={28} color="#10b981" />
-                </View>
-              </TouchableOpacity>
-              
-              {/* Remove Distractions Card */}
-              <TouchableOpacity
-                onPress={() => handleCardPress("Remove Distractions")}
-                style={[styles.bentoCard, styles.blueCard, styles.mediumCard]}
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Remove Distractions</Text>
-                  <View style={styles.iconContainer}>
-                    <ArrowUpRight size={12} color="#000" />
-                  </View>
-                </View>
-                <View style={styles.cardContent}>
-                  <Focus size={28} color="#3b82f6" />
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
 
         {/* Extra space at the bottom */}
@@ -358,72 +242,40 @@ const styles = StyleSheet.create({
   petSection: {
     marginBottom: 12,
   },
+  circularButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  buttonWithLabel: {
+    alignItems: "center",
+  },
+  circularButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#F9FAFB",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  buttonLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#4B5563",
+    textAlign: "center",
+  },
   chapterSection: {
     paddingHorizontal: 20,
     marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  bentoSection: {
-    paddingHorizontal: 12,
-    marginBottom: 12,
-  },
-  bentoRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  bentoLeftColumn: {
-    flex: 1,
-    gap: 12,
-  },
-  bentoRightColumn: {
-    flex: 1,
-  },
-  bentoCard: {
-    padding: 12,
-    borderRadius: 16,
-  },
-  orangeCard: {
-    backgroundColor: "#FFF7ED",
-    height: 128,
-  },
-  purpleCard: {
-    backgroundColor: "#F5F3FF",
-    height: 128,
-  },
-  greenCard: {
-    backgroundColor: "#ECFDF5",
-  },
-  blueCard: {
-    backgroundColor: "#EFF6FF",
-  },
-  largeCard: {
-    height: 268,
-  },
-  mediumCard: {
-    height: 128,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  iconContainer: {
-    backgroundColor: "white",
-    padding: 4,
-    borderRadius: 12,
-  },
-  cardContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   bottomSpace: {
     height: 64,

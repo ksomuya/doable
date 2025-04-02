@@ -18,6 +18,8 @@ import {
   Plus,
   Zap,
   BookOpen,
+  CheckCircle,
+  TrendingUp,
 } from "lucide-react-native";
 
 const { height } = Dimensions.get("window");
@@ -143,65 +145,111 @@ const ChapterInput = ({
     chapter.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Calculate progress percentage for visualization
+  const totalGoal = 5; // Example goal of 5 topics per day
+  const progressPercentage = Math.min(100, (chapters.length / totalGoal) * 100);
+  
+  // Calculate questions goal and progress
+  const questionsGoal = 20; // Example goal of 20 questions per day
+  const questionsPercentage = Math.min(100, (questionsCompleted / questionsGoal) * 100);
+
   return (
     <View style={styles.container}>
       {/* Main Card */}
       <View style={styles.card}>
-        <View style={styles.header}>
-          <Book size={24} color="#4B5563" />
-          <Text style={styles.title}>Today's Study Progress</Text>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Today's Learning</Text>
         </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <View style={styles.statIconContainer}>
-              <BookOpen size={20} color="#4F46E5" />
+        
+        {/* Progress Section */}
+        <View style={styles.progressSection}>
+          <View style={styles.progressColumn}>
+            <View style={styles.progressLabelRow}>
+              <BookOpen size={14} color="#4F46E5" />
+              <Text style={styles.progressLabel}>Topics: {chapters.length}/{totalGoal}</Text>
             </View>
-            <Text style={styles.statValue}>{chapters.length}</Text>
-            <Text style={styles.statLabel}>Topics Added</Text>
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[
+                  styles.progressBar, 
+                  {width: `${progressPercentage}%`, backgroundColor: '#4F46E5'}
+                ]} 
+              />
+            </View>
           </View>
-
-          <View style={styles.statDivider} />
-
-          <View style={styles.statItem}>
-            <View style={styles.statIconContainer}>
-              <Zap size={20} color="#F59E0B" />
+          
+          <View style={styles.progressColumn}>
+            <View style={styles.progressLabelRow}>
+              <Zap size={14} color="#F59E0B" />
+              <Text style={styles.progressLabel}>Questions: {questionsCompleted}/{questionsGoal}</Text>
             </View>
-            <Text style={styles.statValue}>{questionsCompleted}</Text>
-            <Text style={styles.statLabel}>Questions Practiced</Text>
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[
+                  styles.progressBar, 
+                  {width: `${questionsPercentage}%`, backgroundColor: '#F59E0B'}
+                ]} 
+              />
+            </View>
           </View>
         </View>
-
-        {chapters.length > 0 && (
-          <View style={styles.topicsContainer}>
-            <Text style={styles.sectionTitle}>Topics Added Today</Text>
-            <ScrollView
-              style={styles.topicsList}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-            >
+        
+        {/* Topics Section */}
+        {chapters.length > 0 ? (
+          <View style={styles.topicsSection}>
+            <View style={styles.topicsSectionHeader}>
+              <Text style={styles.sectionTitle}>Topics Covered</Text>
+              <TouchableOpacity 
+                style={styles.addTopicButton} 
+                onPress={handleAddChapter}
+              >
+                <Plus size={16} color="#4F46E5" />
+                <Text style={styles.addTopicText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.topicsList}>
               {chapters.map((chapter, index) => (
-                <View key={index} style={styles.topicChip}>
-                  <Text style={styles.topicText}>{chapter}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleRemoveChapter(chapter)}
-                    style={styles.removeTopicButton}
-                  >
-                    <X size={12} color="#6B7280" />
+                <View key={index} style={styles.topicItem}>
+                  <View style={styles.topicContent}>
+                    <CheckCircle size={16} color="#4F46E5" style={styles.topicIcon} />
+                    <Text style={styles.topicText}>{chapter}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleRemoveChapter(chapter)}>
+                    <X size={14} color="#9CA3AF" />
                   </TouchableOpacity>
                 </View>
               ))}
-            </ScrollView>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Book size={36} color="#E5E7EB" />
+            <Text style={styles.emptyStateText}>No topics added yet</Text>
+            <TouchableOpacity 
+              style={styles.emptyStateButton} 
+              onPress={handleAddChapter}
+            >
+              <Plus size={16} color="white" />
+              <Text style={styles.emptyStateButtonText}>Add Topics</Text>
+            </TouchableOpacity>
           </View>
         )}
-
-        <TouchableOpacity style={styles.addButton} onPress={handleAddChapter}>
-          <Plus size={20} color="white" style={styles.addIcon} />
-          <Text style={styles.addButtonText}>Add More Topics</Text>
-        </TouchableOpacity>
+        
+        {/* Motivational Footer */}
+        {chapters.length > 0 && (
+          <View style={styles.cardFooter}>
+            <TrendingUp size={14} color="#4F46E5" />
+            <Text style={styles.footerText}>
+              {chapters.length >= totalGoal 
+                ? "Amazing! You've hit your goal for today." 
+                : `Add ${totalGoal - chapters.length} more topic${totalGoal - chapters.length !== 1 ? 's' : ''} to reach your daily goal.`}
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* Combined Selection Modal */}
+      {/* Topic Selection Modal */}
       <Modal
         visible={showModal}
         transparent
@@ -247,68 +295,52 @@ const ChapterInput = ({
                   <Search size={20} color="#6B7280" />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search chapters..."
+                    placeholder="Search topics..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                   />
                 </View>
-
-                <Text style={styles.modalSubtitle}>
-                  Select the chapters you've studied today
-                </Text>
-
-                <ScrollView style={styles.chaptersList}>
+                <ScrollView style={styles.modalList}>
                   {filteredChapters?.map((chapter, index) => (
                     <TouchableOpacity
                       key={index}
-                      style={styles.chapterOption}
+                      style={styles.modalItem}
                       onPress={() => handleChapterSelect(chapter)}
                     >
-                      <View style={styles.chapterOptionContent}>
-                        <View
-                          style={[
-                            styles.chapterColorDot,
-                            { backgroundColor: selectedSubject.color },
-                          ]}
-                        />
-                        <Text style={styles.chapterOptionText}>{chapter}</Text>
-                      </View>
-                      <ChevronRight size={16} color="#9CA3AF" />
+                      <Text style={styles.modalItemText}>{chapter}</Text>
+                      <View
+                        style={[
+                          styles.subjectIndicator,
+                          { backgroundColor: selectedSubject.color },
+                        ]}
+                      />
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </>
             ) : (
-              <>
-                <Text style={styles.modalSubtitle}>
-                  Please select a subject to continue
-                </Text>
-                <ScrollView style={styles.subjectList}>
-                  {subjects.map((subject) => (
-                    <TouchableOpacity
-                      key={subject.id}
-                      style={styles.subjectItem}
-                      onPress={() => handleSubjectSelect(subject)}
-                    >
+              <ScrollView style={styles.modalList}>
+                {subjects.map((subject, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.subjectItem}
+                    onPress={() => handleSubjectSelect(subject)}
+                  >
+                    <View style={styles.subjectContent}>
                       <View
                         style={[
                           styles.subjectIcon,
                           { backgroundColor: subject.color },
                         ]}
                       >
-                        <Book size={24} color="white" />
+                        <Book size={20} color="white" />
                       </View>
-                      <View style={styles.subjectTextContainer}>
-                        <Text style={styles.subjectName}>{subject.name}</Text>
-                        <Text style={styles.subjectDescription}>
-                          {subject.chapters.length} chapters available
-                        </Text>
-                      </View>
-                      <ChevronRight size={20} color="#6B7280" />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
+                      <Text style={styles.subjectText}>{subject.name}</Text>
+                    </View>
+                    <ChevronRight size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             )}
           </Animated.View>
         </View>
@@ -324,114 +356,143 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "white",
     borderRadius: 16,
-    padding: 20,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
     elevation: 3,
+    overflow: "hidden",
   },
-  header: {
+  cardHeader: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#4F46E5",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "white",
+  },
+  progressSection: {
+    padding: 16,
+  },
+  progressColumn: {
+    marginBottom: 12,
+  },
+  progressLabelRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 6,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginLeft: 12,
+  progressLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 6,
+    color: "#4B5563",
   },
-  statsContainer: {
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressBar: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  topicsSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  topicsSectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-  },
-  statItem: {
-    flex: 1,
     alignItems: "center",
-  },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: "#E5E7EB",
-    marginHorizontal: 8,
-  },
-  topicsContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#4B5563",
-    marginBottom: 8,
+    color: "#1F2937",
   },
-  topicsList: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  topicChip: {
+  addTopicButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: "#EEF2FF",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 20,
+  },
+  addTopicText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#4F46E5",
+    marginLeft: 4,
+  },
+  topicsList: {
+    borderRadius: 8,
+    backgroundColor: "#F9FAFB",
+    padding: 12,
+  },
+  topicItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  topicContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  topicIcon: {
     marginRight: 8,
   },
   topicText: {
     fontSize: 14,
-    color: "#4B5563",
-    marginRight: 4,
+    color: "#374151",
   },
-  removeTopicButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#E5E7EB",
+  emptyState: {
     alignItems: "center",
     justifyContent: "center",
+    padding: 24,
   },
-  addButton: {
+  emptyStateText: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  emptyStateButton: {
     flexDirection: "row",
-    backgroundColor: "#4F46E5",
-    padding: 14,
-    borderRadius: 12,
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#4F46E5",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
-  addIcon: {
-    marginRight: 8,
-  },
-  addButtonText: {
+  emptyStateButtonText: {
+    fontSize: 14,
+    fontWeight: "500",
     color: "white",
-    fontSize: 16,
-    fontWeight: "600",
+    marginLeft: 8,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F3FF",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  footerText: {
+    fontSize: 12,
+    color: "#4F46E5",
+    fontWeight: "500",
+    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,
@@ -442,103 +503,87 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 20,
     maxHeight: height * 0.8,
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    justifyContent: "space-between",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   backButton: {
     padding: 4,
-    marginRight: 8,
   },
   modalTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "600",
     color: "#1F2937",
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: "#6B7280",
-    marginBottom: 16,
+    flex: 1,
+    textAlign: "center",
   },
   closeButton: {
     padding: 4,
   },
-  subjectList: {
-    maxHeight: height * 0.5,
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    margin: 16,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  modalList: {
+    padding: 16,
+  },
+  modalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   subjectItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    marginBottom: 12,
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  subjectContent: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   subjectIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
-  },
-  subjectTextContainer: {
-    flex: 1,
-  },
-  subjectName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 4,
-  },
-  subjectDescription: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: "#1F2937",
-  },
-  chaptersList: {
-    maxHeight: height * 0.5,
-  },
-  chapterOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    backgroundColor: "#F9FAFB",
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  chapterOptionContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  chapterColorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
     marginRight: 12,
   },
-  chapterOptionText: {
+  subjectText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#1F2937",
+  },
+  modalItemText: {
     fontSize: 16,
     color: "#1F2937",
+  },
+  subjectIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });
 

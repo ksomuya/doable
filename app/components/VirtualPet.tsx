@@ -1,66 +1,18 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
   Text,
   Image as RNImage,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
 import { useAppContext } from "../context/AppContext";
 
-interface VirtualPetProps {
-  onPetInteract?: () => void;
-  temperature?: number;
-}
-
-const VirtualPet = ({
-  onPetInteract = () => {},
-  temperature = 30,
-}: VirtualPetProps) => {
+const VirtualPet = () => {
   const { user } = useAppContext();
-  const rotation = useSharedValue(20);
-
-  const isDistressed = temperature > 50;
-  const isWarning = temperature > 20 && temperature <= 50;
-
-  useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(-10, { duration: 700, easing: Easing.inOut(Easing.quad) }),
-      -1,
-      true,
-    );
-  }, []);
-
-  const animatedWingStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={onPetInteract}
-        style={[
-          styles.petContainer,
-          isDistressed
-            ? styles.hotBackground
-            : isWarning
-              ? styles.warmBackground
-              : styles.coldBackground,
-        ]}
-      >
-        {isDistressed && (
-          <View style={styles.warningBubble}>
-            <Text style={styles.warningText}>Too hot!</Text>
-          </View>
-        )}
-
+      <View style={styles.petContainer}>
         <View style={styles.speechBubble}>
           <Text style={styles.speechText}>
             Hi,{" "}
@@ -76,7 +28,7 @@ const VirtualPet = ({
             onError={() => console.log("Failed to load penguin image")}
           />
         </View>
-      </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -98,29 +50,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
-  },
-  coldBackground: {
     backgroundColor: "#DBEAFE",
-  },
-  warmBackground: {
-    backgroundColor: "#FEF3C7",
-  },
-  hotBackground: {
-    backgroundColor: "#FEE2E2",
-  },
-  warningBubble: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-  },
-  warningText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 12,
   },
   speechBubble: {
     position: "absolute",

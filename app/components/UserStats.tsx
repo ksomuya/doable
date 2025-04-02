@@ -1,56 +1,23 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Thermometer, Zap, Snowflake, Flame } from "lucide-react-native";
+import { Zap, Flame } from "lucide-react-native";
 
 interface UserStatsProps {
-  temperature?: number;
   energy?: number;
-  snowballs?: number;
   streak?: number;
-  onTemperaturePress?: () => void;
   onStreakPress?: () => void;
 }
 
 const UserStats = ({
-  temperature = 30,
   energy = 126,
-  snowballs = 505,
   streak = 7,
-  onTemperaturePress = () => {},
   onStreakPress = () => {},
 }: UserStatsProps) => {
-  // Function to determine temperature color based on value
-  const getTemperatureColor = (temp: number) => {
-    if (temp <= 20) return "#3B82F6"; // Blue - optimal
-    if (temp <= 50) return "#FBBF24"; // Yellow - warning
-    return "#EF4444"; // Red - critical
-  };
-
   return (
     <View style={styles.statsContainer}>
-      <TouchableOpacity
-        style={[
-          styles.statPill,
-          { borderColor: getTemperatureColor(temperature) },
-        ]}
-        onPress={onTemperaturePress}
-      >
-        <Thermometer size={20} color={getTemperatureColor(temperature)} />
-        <Text
-          style={[styles.statText, { color: getTemperatureColor(temperature) }]}
-        >
-          {temperature}°
-        </Text>
-      </TouchableOpacity>
-
       <View style={styles.statPill}>
         <Zap size={20} color="#FFB443" />
         <Text style={styles.statText}>{energy}</Text>
-      </View>
-
-      <View style={styles.statPill}>
-        <Snowflake size={20} color="#3B82F6" />
-        <Text style={styles.statText}>{snowballs}</Text>
       </View>
 
       <TouchableOpacity

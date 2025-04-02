@@ -20,7 +20,7 @@ export default function DistractionBlockerScreen() {
   };
 
   const handleGetStarted = () => {
-    router.push("/distraction-blocker/setup");
+    router.push("./setup" as any);
   };
 
   return (

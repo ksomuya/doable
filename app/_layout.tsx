@@ -125,15 +125,7 @@ export default function RootLayout() {
               options={{ headerTitle: "Study Progress Completion", headerShown: false }}
             />
             <Stack.Screen
-              name="distraction-blocker/index"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="distraction-blocker/setup"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="distraction-blocker/app-selection"
+              name="distraction-blocker"
               options={{ headerShown: false }}
             />
           </Stack>
