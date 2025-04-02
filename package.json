@@ -1,5 +1,5 @@
 {
-  "name": "test-tempo",
+  "name": "doable",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
@@ -42,6 +42,7 @@
     "expo-system-ui": "~4.0.8",
     "expo-web-browser": "~14.0.2",
     "lightningcss": "^1.29.2",
+    "lottie-react-native": "^7.2.2",
     "lucide-react-native": "^0.479.0",
     "nativewind": "^4.1.23",
     "postcss": "^8.5.3",

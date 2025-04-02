@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,16 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { useAppContext } from "../context/AppContext";
+import PenguinImage from "../components/PenguinImage";
+import TypingText from "../components/TypingText";
 
 const PracticeIntroScreen = () => {
   const { user } = useAppContext();
+  const [typingComplete, setTypingComplete] = useState(false);
+  const message = `Let's get this part going, ${user.firstName || user.name.split(" ")[0]}! Ready to start your practice session?`;
 
   const handleContinue = () => {
     router.push("/practice");
@@ -23,20 +26,21 @@ const PracticeIntroScreen = () => {
       <View style={styles.content}>
         {/* Speech Bubble */}
         <View style={styles.speechBubble}>
-          <Text style={styles.speechText}>
-            Let's get this part going,{" "}
-            {user.firstName || user.name.split(" ")[0]}! Ready to start your
-            practice session?
-          </Text>
+          <TypingText
+            text={message}
+            style={styles.speechText}
+            typingSpeed={40}
+            onTypingComplete={() => setTypingComplete(true)}
+          />
           <View style={styles.speechTail} />
         </View>
 
-        {/* Penguin Image */}
+        {/* Penguin Image - using Lottie animation */}
         <View style={styles.imageContainer}>
-          <Image
-            source={require("../../assets/images/penguine.svg")}
-            style={styles.image}
-            contentFit="contain"
+          <PenguinImage 
+            size={200} 
+            animation="excited" 
+            loop={true}
           />
         </View>
 
@@ -48,8 +52,9 @@ const PracticeIntroScreen = () => {
       
       <View style={styles.bottomContainer}>
         <TouchableOpacity
-          style={styles.continueButton}
+          style={[styles.continueButton, !typingComplete && styles.disabledButton]}
           onPress={handleContinue}
+          disabled={!typingComplete}
         >
           <Text style={styles.continueButtonText}>Select Subject</Text>
           <ChevronRight size={20} color="#FFFFFF" />
@@ -108,10 +113,6 @@ const styles = StyleSheet.create({
     height: 200,
     marginVertical: 30,
   },
-  image: {
-    width: "100%",
-    height: "100%",
-  },
   description: {
     fontSize: 16,
     color: "#4B5563",
@@ -140,6 +141,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
     marginRight: 8,
+  },
+  disabledButton: {
+    backgroundColor: "#D1D5DB",
+    opacity: 0.8
   },
 });
 
