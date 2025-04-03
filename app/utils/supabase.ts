@@ -5,6 +5,15 @@ import * as SecureStore from 'expo-secure-store';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+// Log values (temporarily for debugging)
+console.log('Supabase URL from env:', supabaseUrl);
+console.log('Supabase Key exists:', !!supabaseAnonKey);
+
+// Validate configuration
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Supabase configuration missing. Please check your .env file.');
+}
+
 // Create a storage adapter for Supabase using Expo's SecureStore
 const ExpoSecureStoreAdapter = {
   getItem: (key: string) => {
