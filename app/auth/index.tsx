@@ -13,7 +13,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Image } from "expo-image";
-import { useAppContext } from "../context/AppContext";
 import { ArrowRight } from "lucide-react-native";
 import { useOAuth } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
@@ -23,7 +22,6 @@ const { height } = Dimensions.get("window");
 WebBrowser.maybeCompleteAuthSession();
 
 const AuthScreen = () => {
-  const { signIn } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
   const buttonOpacity = React.useRef(new Animated.Value(1)).current;
   const buttonScale = React.useRef(new Animated.Value(1)).current;
@@ -66,8 +64,9 @@ const AuthScreen = () => {
       const { createdSessionId, setActive } = await startOAuthFlow();
 
       if (createdSessionId) {
-        setActive({ session: createdSessionId });
-        signIn(); // This is now just a placeholder as Clerk handles the actual auth
+        if (setActive) {
+          await setActive({ session: createdSessionId });
+        }
         router.replace("/onboarding");
       }
     } catch (err) {
@@ -75,7 +74,7 @@ const AuthScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [startOAuthFlow, signIn]);
+  }, [startOAuthFlow]);
 
   return (
     <SafeAreaView style={styles.container}>

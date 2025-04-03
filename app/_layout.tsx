@@ -8,6 +8,7 @@ import "../global.css";
 import { AppProvider } from "./context/AppContext";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
+import ClerkSupabaseSync from "./components/ClerkSupabaseSync";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -51,6 +52,7 @@ export default function RootLayout() {
       tokenCache={tokenCache}
     >
       <AppProvider>
+        <ClerkSupabaseSync />
         <ThemeProvider value={DefaultTheme}>
           <Stack
             screenOptions={({ route }) => ({
