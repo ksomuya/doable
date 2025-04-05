@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { router } from "expo-router";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../utils/supabase';
+import { ensureUserStudiedTopicsConstraints } from '../utils/chapterUtils';
 
 type PracticeType = "refine" | "recall" | "conquer";
 
@@ -115,6 +117,8 @@ type AppContextType = {
   coolDownPenguin: () => boolean;
   // Chapter actions
   updateStudiedChapters: (chapters: string[]) => void;
+  // Supabase data loading
+  fetchUserProfile: () => Promise<void>;
 };
 
 const defaultGoals: UserGoals = {
@@ -371,6 +375,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // Fetch user profile from Supabase
+  const fetchUserProfile = async () => {
+    if (!user.isAuthenticated || !clerkUser) return;
+    
+    try {
+      // Fetch user data
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', clerkUser.id)
+        .single();
+        
+      if (userError) throw userError;
+      
+      // Fetch user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', clerkUser.id)
+        .single();
+        
+      if (profileError) throw profileError;
+      
+      // Fetch study preferences
+      const { data: prefsData, error: prefsError } = await supabase
+        .from('study_preferences')
+        .select('*')
+        .eq('user_id', clerkUser.id)
+        .maybeSingle();
+      
+      // Update user state with Supabase data
+      setUser(prev => ({
+        ...prev,
+        isOnboarded: userData.is_onboarded,
+        isProfileSetup: userData.is_profile_setup,
+        firstName: userData.first_name || prev.firstName,
+        lastName: userData.last_name || prev.lastName,
+        dateOfBirth: userData.date_of_birth ? new Date(userData.date_of_birth) : prev.dateOfBirth,
+        parentMobile: userData.parent_mobile || prev.parentMobile,
+        xp: profileData.xp,
+        level: profileData.level,
+        streak: profileData.streak,
+        streakGoal: profileData.streak_goal,
+        notificationsEnabled: profileData.notifications_enabled,
+        rank: profileData.rank,
+        goals: prefsData ? {
+          dailyQuestions: prefsData.daily_questions_goal,
+          weeklyTopics: prefsData.weekly_topics_goal,
+          streak: prefsData.streak_goal
+        } : prev.goals
+      }));
+      
+      return;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
   // Update user data when Clerk user changes
   useEffect(() => {
     if (isSignedIn && clerkUser) {
@@ -389,6 +451,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           clerkUser.imageUrl ||
           "https://api.dicebear.com/7.x/avataaars/svg?seed=doable",
       });
+      
+      // Fetch user profile data from Supabase
+      fetchUserProfile();
+      
+      // Ensure database constraints
+      ensureUserStudiedTopicsConstraints()
+        .catch(err => console.error('Error ensuring database constraints:', err));
     } else {
       setUser(defaultUser);
     }
@@ -435,29 +504,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Profile setup actions
-  const completeProfileSetup = (
+  const completeProfileSetup = async (
     firstName: string,
     lastName: string,
     dateOfBirth: Date | null,
     parentMobile: string,
   ) => {
-    setUser({
-      ...user,
-      isProfileSetup: true,
-      firstName,
-      lastName,
-      name: `${firstName} ${lastName}`,
-      dateOfBirth,
-      parentMobile,
-    });
+    if (!isSignedIn || !clerkUser) return;
+    
+    try {
+      // Update user record in Supabase
+      const { error } = await supabase
+        .from('users')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          date_of_birth: dateOfBirth ? dateOfBirth.toISOString() : null,
+          parent_mobile: parentMobile,
+          is_profile_setup: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', clerkUser.id);
+        
+      if (error) throw error;
+        
+      // Update local state
+      setUser((prevUser) => ({
+        ...prevUser,
+        firstName,
+        lastName,
+        dateOfBirth,
+        parentMobile,
+        isProfileSetup: true,
+      }));
+    } catch (error) {
+      console.error('Error updating profile in Supabase:', error);
+    }
   };
 
   // Streak actions
-  const updateStreakGoal = (days: number) => {
-    setUser({
-      ...user,
-      streakGoal: days
-    });
+  const updateStreakGoal = async (days: number) => {
+    if (!isSignedIn || !clerkUser) return;
+    
+    try {
+      // Update streak goal in user_profiles table
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({
+          streak_goal: days,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', clerkUser.id);
+        
+      if (profileError) throw profileError;
+      
+      // Also update in study_preferences if it exists
+      const { error: prefError } = await supabase
+        .from('study_preferences')
+        .update({
+          streak_goal: days,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', clerkUser.id);
+        
+      // Update local state
+      setUser((prevUser) => ({
+        ...prevUser,
+        streakGoal: days,
+        goals: {
+          ...prevUser.goals,
+          streak: days
+        }
+      }));
+    } catch (error) {
+      console.error('Error updating streak goal in Supabase:', error);
+    }
   };
   
   const updateNotificationPreference = (enabled: boolean) => {
@@ -663,18 +784,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     updateNotificationPreference,
     isFirstPracticeSession,
     updateUserGoals,
+    updatePracticeProgress,
+    startPracticeSession,
+    setPracticeStep,
+    updatePracticeStepInfo,
+    completePracticeSession,
+    resetPracticeProgress,
     feedPet,
     playWithPet,
     updatePetMood,
     updateTemperature,
     coolDownPenguin,
-    startPracticeSession,
-    setPracticeStep,
-    updatePracticeStepInfo,
-    updatePracticeProgress,
-    completePracticeSession,
-    resetPracticeProgress,
     updateStudiedChapters,
+    fetchUserProfile
   };
 
   return (

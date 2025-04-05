@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import {
   Book,
@@ -21,6 +22,9 @@ import {
   CheckCircle,
   TrendingUp,
 } from "lucide-react-native";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import { useAppContext } from "../context/AppContext";
+import { fetchUserChapters, updateChapterStudyStatus, updateTopicStudyStatus } from "../utils/chapterUtils";
 
 const { height } = Dimensions.get("window");
 
@@ -40,59 +44,33 @@ interface ChapterInputProps {
   questionsCompleted?: number;
 }
 
-const subjects = [
-  {
-    id: "physics",
-    name: "Physics",
-    color: "#3B82F6",
-    chapters: [
-      "Kinematics",
-      "Newton's Laws",
-      "Work and Energy",
-      "Rotational Motion",
-      "Gravitation",
-      "Thermodynamics",
-      "Waves",
-      "Optics",
-      "Electrostatics",
-      "Current Electricity",
-    ],
-  },
-  {
-    id: "chemistry",
-    name: "Chemistry",
-    color: "#10B981",
-    chapters: [
-      "Atomic Structure",
-      "Chemical Bonding",
-      "States of Matter",
-      "Thermodynamics",
-      "Equilibrium",
-      "Redox Reactions",
-      "Organic Chemistry",
-      "Polymers",
-      "Surface Chemistry",
-      "Electrochemistry",
-    ],
-  },
-  {
-    id: "mathematics",
-    name: "Mathematics",
-    color: "#8B5CF6",
-    chapters: [
-      "Sets and Functions",
-      "Algebra",
-      "Coordinate Geometry",
-      "Calculus",
-      "Vectors",
-      "3D Geometry",
-      "Linear Programming",
-      "Probability",
-      "Statistics",
-      "Trigonometry",
-    ],
-  },
-];
+// Define our local interfaces
+interface TopicType {
+  id: string;
+  name: string;
+  chapter_id?: string;
+  isStudied?: boolean;
+}
+
+interface ChapterType {
+  id: string;
+  name: string;
+  class_level: string;
+  isStudied?: boolean;
+  subject_id: string;
+  subjects?: {
+    name: string;
+    color: string;
+  };
+  topics?: TopicType[];
+}
+
+interface SubjectType {
+  id: string;
+  name: string;
+  color: string;
+  chapters: ChapterType[];
+}
 
 // Constants
 const TOTAL_GOAL = 5; // Example goal of 5 topics per day
@@ -103,11 +81,87 @@ const ChapterInput = ({
   initialChapters = [],
   questionsCompleted = 0,
 }: ChapterInputProps) => {
+  const { user: clerkUser } = useUser();
+  const { surveyData } = useAppContext();
   const [chapters, setChapters] = useState<string[]>(initialChapters);
   const [showModal, setShowModal] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState<(typeof subjects)[0] | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalY] = useState(new Animated.Value(height));
+  const [isLoading, setIsLoading] = useState(false);
+  const [subjects, setSubjects] = useState<SubjectType[]>([]);
+  const [studiedChapters, setStudiedChapters] = useState<ChapterType[]>([]);
+  const { getToken } = useAuth();
+  
+  // Load subjects and chapters from Supabase
+  useEffect(() => {
+    const loadChapters = async () => {
+      if (!clerkUser?.id || !surveyData.examType || !surveyData.currentClass) {
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        // Get Clerk token for RLS authentication
+        const token = await getToken() || undefined;
+        
+        const { chapters: fetchedChapters } = await fetchUserChapters(
+          clerkUser.id,
+          surveyData.currentClass,
+          surveyData.preparationLevel || 'Beginner',
+          surveyData.examType,
+          token // Pass token to authenticate the request
+        );
+        
+        // Group chapters by subject
+        const subjectsMap: Record<string, SubjectType> = {};
+        fetchedChapters.forEach(chapter => {
+          if (chapter.subjects) {
+            const subjectId = chapter.subject_id;
+            
+            if (!subjectsMap[subjectId]) {
+              subjectsMap[subjectId] = {
+                id: subjectId,
+                name: chapter.subjects.name,
+                color: chapter.subjects.color,
+                chapters: []
+              };
+            }
+            
+            subjectsMap[subjectId].chapters.push({
+              ...chapter,
+              isStudied: chapter.isStudied || false, // Ensure isStudied is always boolean
+            });
+          }
+        });
+        
+        setSubjects(Object.values(subjectsMap));
+        
+        // Get studied chapters
+        const studied = fetchedChapters
+          .filter(chapter => chapter.isStudied)
+          .map(chapter => ({
+            ...chapter,
+            isStudied: true // Ensure isStudied is always true for studied chapters
+          }));
+          
+        setStudiedChapters(studied);
+        
+        // Update chapters list for display
+        const chapterNames = studied.map(chapter => 
+          `${chapter.name} (${chapter.class_level})`
+        );
+        setChapters(chapterNames);
+        
+      } catch (error) {
+        console.error('Error loading chapters:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadChapters();
+  }, [clerkUser, surveyData, getToken]);
 
   useEffect(() => {
     if (showModal) {
@@ -127,26 +181,93 @@ const ChapterInput = ({
     setShowModal(true);
   }, []);
 
-  const handleSubjectSelect = useCallback((subject: (typeof subjects)[0]) => {
+  const handleSubjectSelect = useCallback((subject: SubjectType) => {
     setSelectedSubject(subject);
   }, []);
 
-  const handleChapterSelect = useCallback((chapter: string) => {
-    if (!chapters.includes(chapter)) {
-      const updatedChapters = [...chapters, chapter];
-      setChapters(updatedChapters);
-      onSave(updatedChapters);
-    }
-    setShowModal(false);
-    setSelectedSubject(null);
-    setSearchQuery("");
-  }, [chapters, onSave]);
+  const handleChapterSelect = useCallback(
+    async (chapter: ChapterType) => {
+      if (!clerkUser?.id) return;
+      
+      try {
+        // Get Clerk token for RLS authentication
+        const token = await getToken() || undefined;
+        
+        // Update in Supabase
+        const result = await updateChapterStudyStatus(
+          clerkUser.id,
+          chapter.id,
+          true,
+          token // Pass token to authenticate the request
+        );
+        
+        if (result.success) {
+          // Update local state
+          const chapterDisplay = `${chapter.name} (${chapter.class_level})`;
+          if (!chapters.includes(chapterDisplay)) {
+            const updatedChapters = [...chapters, chapterDisplay];
+            setChapters(updatedChapters);
+            onSave(updatedChapters);
+            
+            // Add to studied chapters
+            const updatedChapter = { ...chapter, isStudied: true };
+            setStudiedChapters(prev => [...prev, updatedChapter]);
+          }
+        }
+      } catch (error) {
+        console.error('Error marking chapter as studied:', error);
+      }
+      
+      setShowModal(false);
+      setSelectedSubject(null);
+      setSearchQuery("");
+    },
+    [chapters, onSave, clerkUser, getToken]
+  );
 
-  const handleRemoveChapter = useCallback((chapter: string) => {
-    const updatedChapters = chapters.filter((c) => c !== chapter);
-    setChapters(updatedChapters);
-    onSave(updatedChapters);
-  }, [chapters, onSave]);
+  const handleRemoveChapter = useCallback(
+    async (chapterDisplay: string) => {
+      if (!clerkUser?.id) return;
+      
+      try {
+        // Extract chapter name from display format "Name (Class Level)"
+        const nameMatch = chapterDisplay.match(/(.*) \((.*)\)/);
+        if (!nameMatch) return;
+        
+        const chapterName = nameMatch[1];
+        const classLevel = nameMatch[2];
+        
+        // Find the chapter in studied chapters
+        const chapterToRemove = studiedChapters.find(
+          c => c.name === chapterName && c.class_level === classLevel
+        );
+        
+        if (chapterToRemove) {
+          // Get Clerk token for RLS authentication
+          const token = await getToken() || undefined;
+          
+          // Update in Supabase
+          const result = await updateChapterStudyStatus(
+            clerkUser.id,
+            chapterToRemove.id,
+            false,
+            token // Pass token to authenticate the request
+          );
+          
+          if (result.success) {
+            // Update local state
+            const updatedChapters = chapters.filter(c => c !== chapterDisplay);
+            setChapters(updatedChapters);
+            onSave(updatedChapters);
+            setStudiedChapters(prev => prev.filter(c => c.id !== chapterToRemove.id));
+          }
+        }
+      } catch (error) {
+        console.error('Error removing chapter:', error);
+      }
+    },
+    [chapters, onSave, studiedChapters, clerkUser, getToken]
+  );
 
   const handleBack = useCallback(() => {
     setSelectedSubject(null);
@@ -160,7 +281,8 @@ const ChapterInput = ({
   // Memoize filtered chapters
   const filteredChapters = useMemo(() => 
     selectedSubject?.chapters.filter((chapter) =>
-      chapter.toLowerCase().includes(searchQuery.toLowerCase())
+      chapter.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !chapter.isStudied
     ),
     [selectedSubject, searchQuery]
   );
@@ -183,6 +305,15 @@ const ChapterInput = ({
       : `Add ${TOTAL_GOAL - chapters.length} more topic${TOTAL_GOAL - chapters.length !== 1 ? 's' : ''} to reach your daily goal.`,
     [chapters.length]
   );
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color={COLORS.accent} />
+        <Text style={styles.loadingText}>Loading your progress...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -328,28 +459,43 @@ const ChapterInput = ({
                   />
                 </View>
                 <ScrollView style={styles.modalList}>
-                  {filteredChapters?.map((chapter, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.modalItem}
-                      onPress={() => handleChapterSelect(chapter)}
-                    >
-                      <Text style={styles.modalItemText}>{chapter}</Text>
-                      <View
-                        style={[
-                          styles.subjectIndicator,
-                          { backgroundColor: selectedSubject.color },
-                        ]}
-                      />
-                    </TouchableOpacity>
-                  ))}
+                  {filteredChapters && filteredChapters.length > 0 ? (
+                    filteredChapters.map((chapter) => (
+                      <TouchableOpacity
+                        key={chapter.id}
+                        style={styles.modalItem}
+                        onPress={() => handleChapterSelect(chapter)}
+                      >
+                        <View style={styles.chapterItemContent}>
+                          <Text style={styles.modalItemText}>{chapter.name}</Text>
+                          <View style={styles.classLevelTag}>
+                            <Text style={styles.classLevelText}>{chapter.class_level}</Text>
+                          </View>
+                        </View>
+                        <View
+                          style={[
+                            styles.subjectIndicator,
+                            { backgroundColor: selectedSubject.color },
+                          ]}
+                        />
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <View style={styles.noResults}>
+                      <Text style={styles.noResultsText}>
+                        {searchQuery 
+                          ? "No matching chapters found" 
+                          : "All chapters in this subject have been studied"}
+                      </Text>
+                    </View>
+                  )}
                 </ScrollView>
               </>
             ) : (
               <ScrollView style={styles.modalList}>
-                {subjects.map((subject, index) => (
+                {subjects.map((subject) => (
                   <TouchableOpacity
-                    key={index}
+                    key={subject.id}
                     style={styles.subjectItem}
                     onPress={() => handleSubjectSelect(subject)}
                   >
@@ -400,14 +546,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
     color: COLORS.accent,
   },
   progressSection: {
+    flexDirection: "row",
     padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   progressColumn: {
-    marginBottom: 12,
+    flex: 1,
+    marginRight: 8,
   },
   progressLabelRow: {
     flexDirection: "row",
@@ -415,10 +565,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   progressLabel: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: "#374151",
-    fontWeight: "500",
+    fontSize: 12,
+    color: COLORS.gray,
+    marginLeft: 4,
   },
   progressBarContainer: {
     height: 6,
@@ -432,7 +581,6 @@ const styles = StyleSheet.create({
   },
   topicsSection: {
     padding: 16,
-    paddingTop: 0,
   },
   topicsSectionHeader: {
     flexDirection: "row",
@@ -441,7 +589,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: "#1F2937",
   },
@@ -454,21 +602,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   addTopicText: {
-    color: COLORS.white,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "500",
+    color: "white",
     marginLeft: 4,
   },
   topicsList: {
-    marginBottom: 8,
+    gap: 8,
   },
   topicItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    backgroundColor: "#F9FAFB",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   topicContent: {
     flexDirection: "row",
@@ -476,20 +625,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topicIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   topicText: {
     fontSize: 14,
-    color: "#1F2937",
+    color: "#4B5563",
+    flex: 1,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#FEF3C7",
+  },
+  footerText: {
+    fontSize: 12,
+    marginLeft: 6,
+    color: "#92400E",
   },
   emptyState: {
     padding: 24,
     alignItems: "center",
+    justifyContent: "center",
   },
   emptyStateText: {
-    fontSize: 15,
+    fontSize: 14,
     color: "#6B7280",
-    marginTop: 12,
+    marginTop: 8,
     marginBottom: 16,
   },
   emptyStateButton: {
@@ -497,104 +659,98 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.accent,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   emptyStateButtonText: {
-    color: COLORS.white,
     fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: COLORS.accentLight,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-  },
-  footerText: {
-    marginLeft: 8,
-    fontSize: 13,
-    color: "#9F580A",
     fontWeight: "500",
+    color: "white",
+    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "white",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 20,
-    height: height * 0.8,
+    height: height * 0.7,
+    paddingBottom: 40,
   },
   modalHeader: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  backButton: {
-    padding: 8,
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1F2937",
+    color: "#111827",
     flex: 1,
     textAlign: "center",
   },
+  backButton: {
+    padding: 4,
+  },
   closeButton: {
-    padding: 8,
+    padding: 4,
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F9FAFB",
-    marginHorizontal: 20,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: "#F3F4F6",
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    margin: 16,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
     fontSize: 16,
-    color: "#1F2937",
+    marginLeft: 8,
+    padding: 0,
   },
   modalList: {
-    paddingHorizontal: 20,
+    flex: 1,
   },
   modalItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
+  chapterItemContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   modalItemText: {
     fontSize: 16,
-    color: "#1F2937",
+    color: "#111827",
   },
   subjectIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    marginLeft: 8,
   },
   subjectItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
@@ -603,18 +759,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   subjectIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
   },
   subjectText: {
     fontSize: 16,
-    color: "#1F2937",
-    fontWeight: "500",
+    color: "#111827",
+  },
+  classLevelTag: {
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  classLevelText: {
+    fontSize: 12,
+    color: "#4B5563",
+  },
+  noResults: {
+    padding: 20,
+    alignItems: "center",
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 16,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: COLORS.gray,
   },
 });
 
-export default React.memo(ChapterInput);
+export default ChapterInput;

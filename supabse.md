@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now()
 );
+
 ```
 
 | Field                  | Type    | Description                        |
@@ -115,7 +116,6 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 | user_id                | text FK | References `users(id)`             |
 | xp                     | integer | Total experience points            |
 | level                  | integer | User level                         |
-| snowballs              | integer | Virtual currency (pet is removed, but currency remains if needed) |
 | streak                 | integer | Current streak days                |
 | streak_goal            | integer | Target streak goal                 |
 | notifications_enabled  | boolean | Toggle for notifications           |

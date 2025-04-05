@@ -10,9 +10,12 @@ import { useRouter } from "expo-router";
 import OnboardingSurvey from "../components/OnboardingSurvey";
 import { useAppContext } from "../context/AppContext";
 import { SurveyData } from "../components/OnboardingSurvey";
-import PaywallScreen from "./paywall";
 import PenguinImage from "../components/PenguinImage";
 import TypingText from "../components/TypingText";
+import { supabase } from "../utils/supabase";
+import { getSupabaseWithAuth } from "../utils/supabaseAuth";
+import { useUser, useAuth } from "@clerk/clerk-expo";
+import { Alert } from "react-native";
 
 // Remove the direct import since we now have a component
 // const penguineImage = require("../../assets/images/penguine.svg");
@@ -22,29 +25,158 @@ const OnboardingScreen = () => {
   const { completeSurvey } = useAppContext();
   const [currentStep, setCurrentStep] = useState(1); // Start with first intro screen
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
-  const [showPaywall, setShowPaywall] = useState(false);
   const [typingComplete, setTypingComplete] = useState(false);
+  const [savingData, setSavingData] = useState(false);
+  const { user } = useUser();
+  const { getToken } = useAuth();
 
-  const handleSurveyComplete = (data: SurveyData) => {
+  const saveOnboardingSurvey = async (data: SurveyData) => {
+    if (!user) {
+      console.error('No user is signed in');
+      return false;
+    }
+
+    setSavingData(true);
+    try {
+      // Get the user's JWT token from Clerk for Supabase auth
+      const token = await getToken({ template: "supabase" });
+      
+      if (!token) {
+        console.error('Could not get authentication token');
+        Alert.alert('Authentication Error', 'Failed to authenticate with the server.');
+        return false;
+      }
+      
+      // Create an authenticated Supabase client
+      const supabaseWithAuth = await getSupabaseWithAuth(token);
+      
+      // Format survey data for Supabase
+      const surveyRecord = {
+        user_id: user.id,
+        exam_type: data.examType,
+        current_class: data.currentClass,
+        preparation_level: data.preparationLevel,
+        daily_study_time: data.dailyStudyTime,
+      };
+
+      // Check if a record already exists for this user
+      const { data: existingSurvey, error: checkError } = await supabaseWithAuth
+        .from('onboarding_surveys')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+        
+      if (checkError) {
+        console.error('Error checking for existing survey:', checkError);
+        Alert.alert('Error', 'Failed to save your survey data. Please try again.');
+        return false;
+      }
+
+      // Update or insert based on whether a record exists
+      let error;
+      if (existingSurvey) {
+        // Update existing record
+        const { error: updateError } = await supabaseWithAuth
+          .from('onboarding_surveys')
+          .update({
+            ...surveyRecord,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+          
+        error = updateError;
+      } else {
+        // Insert new record
+        const { error: insertError } = await supabaseWithAuth
+          .from('onboarding_surveys')
+          .insert(surveyRecord);
+          
+        error = insertError;
+      }
+
+      if (error) {
+        console.error('Error saving survey data:', error);
+        Alert.alert('Error', 'Failed to save your survey data. Please try again.');
+        return false;
+      }
+
+      // Save study preferences separately
+      if (data.studyPreferences && data.studyPreferences.length > 0) {
+        // Delete any existing preferences first
+        await supabaseWithAuth
+          .from('study_preferences')
+          .delete()
+          .eq('user_id', user.id);
+          
+        // Insert each preference as a separate record
+        const preferenceRecords = data.studyPreferences.map(preference => ({
+          user_id: user.id,
+          preference: preference
+        }));
+        
+        const { error: prefError } = await supabaseWithAuth
+          .from('study_preferences')
+          .insert(preferenceRecords);
+          
+        if (prefError) {
+          console.error('Error saving study preferences:', prefError);
+          // Continue anyway, as the main survey data was saved
+        }
+      }
+
+      console.log('Survey data saved successfully');
+      return true;
+    } catch (error) {
+      console.error('Exception saving survey data:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+      return false;
+    } finally {
+      setSavingData(false);
+    }
+  };
+
+  const handleSurveyComplete = async (data: SurveyData) => {
     // Save the survey data to local state first
     setSurveyData(data);
     
-    // Show paywall instead of going to next screen
-    setShowPaywall(true);
-  };
-
-  const handleFinalContinue = () => {
-    // Navigate to study progress flow
-    setCurrentStep(7);
-  };
-
-  const handlePaywallComplete = () => {
-    // Save the survey data to context
-    if (surveyData) {
-      completeSurvey(surveyData);
+    // Save to Supabase
+    const saved = await saveOnboardingSurvey(data);
+    
+    if (saved) {
+      // Save the survey data to context
+      completeSurvey(data);
+      
+      // Mark user as onboarded and profile setup in Supabase
+      if (user) {
+        try {
+          // Get the user's JWT token from Clerk
+          const token = await getToken({ template: "supabase" });
+          
+          if (token) {
+            // Create an authenticated Supabase client
+            const supabaseWithAuth = await getSupabaseWithAuth(token);
+            
+            // Update both is_onboarded and is_profile_setup flags to true
+            const { error } = await supabaseWithAuth
+              .from('users')
+              .update({ 
+                is_onboarded: true,
+                is_profile_setup: true 
+              })
+              .eq('id', user.id);
+              
+            if (error) {
+              console.error('Error updating user status:', error);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to update user status:', err);
+        }
+      }
+      
+      // Navigate directly to home page instead of paywall/study progress
+      router.replace("/home" as any);
     }
-    // Navigate to study progress flow
-    router.replace("/study-progress");
   };
   
   // Reset typing complete state when step changes
@@ -93,11 +225,6 @@ const OnboardingScreen = () => {
   };
 
   const renderContent = () => {
-    // If showPaywall is true, show the paywall screen
-    if (showPaywall) {
-      return <PaywallScreen onComplete={handlePaywallComplete} />;
-    }
-
     switch (currentStep) {
       case 1: // First intro screen
         return renderPenguinIntroScreen("Hi there! i am dodo", () =>
@@ -115,22 +242,6 @@ const OnboardingScreen = () => {
             <OnboardingSurvey onComplete={handleSurveyComplete} />
           </View>
         );
-      case 4: // After survey - first message
-        return renderPenguinIntroScreen("Great! We're almost there!", () =>
-          setCurrentStep(5),
-        );
-      case 5: // After survey - second message
-        return renderPenguinIntroScreen(
-          "One last very important thing to start your practice session...",
-          () => setCurrentStep(6),
-        );
-      case 6: // After survey - third message
-        return renderPenguinIntroScreen(
-          "Tell us which chapters you've studied in your class so we can create the best practice session for you!",
-          handleFinalContinue,
-        );
-      case 7: // Paywall screen - this is now just a fallback
-        return <PaywallScreen onComplete={handlePaywallComplete} />;
       default:
         return null;
     }

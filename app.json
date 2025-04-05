@@ -14,10 +14,6 @@
     },
     "android": {
       "package": "com.doable.android",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
       "intentFilters": [
         {
           "action": "VIEW",
@@ -27,7 +23,10 @@
               "scheme": "doable"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -50,6 +49,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "c0b39ccc-aaf9-485b-bc74-9b863ce817cb"
+      }
+    },
+    "owner": "somuyakhandelwal"
   }
 }
