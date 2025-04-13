@@ -4,7 +4,6 @@
     "slug": "doable",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "doable",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,6 +12,10 @@
       "bundleIdentifier": "com.doable.ios"
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "package": "com.doable.android",
       "intentFilters": [
         {
@@ -36,16 +39,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
