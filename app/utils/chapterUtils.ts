@@ -495,4 +495,48 @@ export const ensureUserStudiedTopicsConstraints = async (): Promise<boolean> => 
     console.error('Error ensuring constraints:', error);
     return false;
   }
+};
+
+/**
+ * Checks if a user has at least one topic or chapter marked as studied
+ * @param userId The user's ID
+ * @param authToken The user's auth token from Clerk
+ * @returns Promise with boolean indicating if the user has at least one topic
+ */
+export const hasAtLeastOneTopic = async (
+  userId: string,
+  authToken?: string
+): Promise<boolean> => {
+  try {
+    // Use authenticated client if token is provided
+    const client = authToken ? await getSupabaseWithAuth(authToken) : supabase;
+    
+    // Check if the user has any studied topics or chapters
+    const { data: studiedItems, error } = await client
+      .from('user_studied_topics')
+      .select('id')
+      .eq('user_id', userId)
+      .limit(1);
+    
+    if (error) {
+      console.error('Error checking studied topics:', error);
+      return false;
+    }
+    
+    return studiedItems && studiedItems.length > 0;
+  } catch (error) {
+    console.error('Error checking if user has topics:', error);
+    return false;
+  }
+};
+
+// Default export to satisfy Expo Router's requirement
+export default {
+  markClassChaptersAsStudied,
+  fetchUserChapters,
+  updateChapterStudyStatus,
+  updateTopicStudyStatus,
+  ensureUserStudiedTopicsConstraints,
+  hasAtLeastOneTopic,
+  isRouteComponent: false
 }; 

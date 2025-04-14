@@ -163,4 +163,10 @@ export function useSyncUser() {
   }, [user]);
 
   return { syncUser, loading, error };
-} 
+}
+
+// Default export to satisfy Expo Router's requirement
+export default { 
+  useSyncUser,
+  isRouteComponent: false 
+}; 

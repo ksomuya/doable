@@ -26,7 +26,8 @@ export const getSupabaseWithAuth = async (clerkToken: string) => {
     },
   };
 
-  // Create a new Supabase client with the auth token
+  // Create a new Supabase client with the auth token in global headers
+  // This is more reliable than using Authorization header directly
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
@@ -61,4 +62,11 @@ export const disableRLSForTable = async (tableName: string) => {
     console.error('Failed to disable RLS:', err);
     return false;
   }
+};
+
+// Default export to satisfy Expo Router's requirement
+export default { 
+  getSupabaseWithAuth, 
+  disableRLSForTable,
+  isRouteComponent: false
 }; 

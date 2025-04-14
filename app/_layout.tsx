@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { SplashScreen } from "expo-router";
+import { SplashScreen, useSegments, useRouter } from "expo-router";
 import * as SplashScreenModule from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { AppProvider } from "./context/AppContext";
-import { ClerkProvider } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
 import ClerkSupabaseSync from "./components/ClerkSupabaseSync";
@@ -15,23 +15,59 @@ import { Stack } from "expo-router";
 SplashScreenModule.preventAutoHideAsync();
 SplashScreen.preventAutoHideAsync();
 
-// Create a secure token cache for Clerk
+// Enhanced secure token cache for Clerk with improved error handling
 const tokenCache = {
   async getToken(key: string) {
     try {
-      return SecureStore.getItemAsync(key);
+      return await SecureStore.getItemAsync(key);
     } catch (err) {
+      console.error('Failed to get token from SecureStore:', err);
       return null;
     }
   },
   async saveToken(key: string, value: string) {
     try {
-      return SecureStore.setItemAsync(key, value);
+      return await SecureStore.setItemAsync(key, value);
     } catch (err) {
+      console.error('Failed to save token to SecureStore:', err);
+      return;
+    }
+  },
+  async clearToken(key: string) {
+    try {
+      return await SecureStore.deleteItemAsync(key);
+    } catch (err) {
+      console.error('Failed to clear token from SecureStore:', err);
       return;
     }
   },
 };
+
+// Auth routing component that redirects based on auth state
+function AuthMiddleware() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Skip if auth isn't loaded yet
+    if (!isLoaded) return;
+
+    // Check if the route is the auth screen
+    const isAuthGroup = segments[0] === 'auth';
+
+    // Handle routing based on auth state and current location
+    if (!isSignedIn && !isAuthGroup) {
+      // Redirect to auth screen if not signed in and not already on auth screen
+      router.replace('/auth');
+    } else if (isSignedIn && isAuthGroup) {
+      // Redirect to main screen if signed in but on auth screen
+      router.replace('/');
+    }
+  }, [isSignedIn, isLoaded, segments]);
+
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -65,6 +101,7 @@ export default function RootLayout() {
     >
       <AppProvider>
         <ClerkSupabaseSync />
+        <AuthMiddleware />
         <StatusBar style={Platform.OS === 'ios' ? 'dark' : 'light'} />
         <Stack
           screenOptions={{

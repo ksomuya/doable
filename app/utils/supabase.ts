@@ -35,4 +35,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false,
   },
-}); 
+});
+
+// Default export to satisfy Expo Router's requirement
+export default { 
+  supabase,
+  isRouteComponent: false 
+}; 

@@ -79,6 +79,8 @@ type AppContextType = {
   practiceSession: PracticeSession;
   practiceProgress: PracticeProgress;
   studiedChapters: string[];
+  isSupabaseAuthReady: boolean;
+  setSupabaseAuthStatus: (isReady: boolean) => void;
   // Auth actions
   signOut: () => void;
   // Onboarding actions
@@ -218,6 +220,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const [studiedChapters, setStudiedChapters] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSupabaseAuthReady, setIsSupabaseAuthReady] = useState(false);
 
   // Load persisted data on app start
   useEffect(() => {
@@ -829,6 +832,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
+  // Function to update the auth ready state
+  const setSupabaseAuthStatus = (isReady: boolean) => {
+    setIsSupabaseAuthReady(isReady);
+  };
+
   const value = {
     user,
     pet,
@@ -838,6 +846,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     practiceSession,
     practiceProgress,
     studiedChapters,
+    isSupabaseAuthReady,
+    setSupabaseAuthStatus,
     signOut,
     completeSurvey,
     updateSurveyProgress,

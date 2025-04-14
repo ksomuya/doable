@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ import {
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useAppContext } from "../context/AppContext";
 import { fetchUserChapters, updateChapterStudyStatus, updateTopicStudyStatus } from "../utils/chapterUtils";
-import { recordDailyLogin, startStudySession, endStudySession } from "../utils/analyticsUtils";
+import { recordDailyLogin, startStudySession, endStudySession, updateStudySessionTopics } from "../utils/analyticsUtils";
 
 const { height } = Dimensions.get("window");
 
@@ -87,7 +87,7 @@ const ChapterInput = ({
   examType,
 }: ChapterInputProps) => {
   const { user: clerkUser } = useUser();
-  const { surveyData } = useAppContext();
+  const { surveyData, isSupabaseAuthReady } = useAppContext();
   const [chapters, setChapters] = useState<string[]>(initialChapters);
   const [showModal, setShowModal] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<SubjectType | null>(null);
@@ -110,8 +110,10 @@ const ChapterInput = ({
   const [isSaving, setIsSaving] = useState(false);
   const { getToken } = useAuth();
   
-  // Add state for tracking the current study session
-  const [currentStudySessionId, setCurrentStudySessionId] = useState<string | null>(null);
+  // Replace state with ref to avoid re-renders
+  const currentStudySessionIdRef = useRef<string | null>(null);
+  // Add initialization flag
+  const analyticsInitializedRef = useRef<boolean>(false);
   
   // Load subjects and chapters from Supabase
   useEffect(() => {
@@ -268,19 +270,26 @@ const ChapterInput = ({
 
   // Initialize analytics and start study session
   useEffect(() => {
+    // Skip if already initialized in this component mount
+    if (analyticsInitializedRef.current) return;
+    
     const initAnalytics = async () => {
       try {
         // Record daily login
         if (clerkUser?.id) {
           console.log("Recording daily login for user:", clerkUser.id);
-          await recordDailyLogin(clerkUser.id);
+          // Get token ONLY if auth is ready
+          const token = await getToken({ template: 'supabase' });
+          await recordDailyLogin(clerkUser.id, token || undefined);
           
           // Start a study session
           console.log("Starting study session for user:", clerkUser.id);
-          const sessionId = await startStudySession(clerkUser.id);
+          const sessionId = await startStudySession(clerkUser.id, [], token || undefined);
           if (sessionId) {
             console.log("Study session started with ID:", sessionId);
-            setCurrentStudySessionId(sessionId);
+            currentStudySessionIdRef.current = sessionId;
+            // Mark as initialized to prevent re-running
+            analyticsInitializedRef.current = true;
           }
         }
       } catch (error) {
@@ -288,22 +297,26 @@ const ChapterInput = ({
       }
     };
 
-    if (isLoading === false && loadingComplete && clerkUser?.id) {
+    // Run only when loading is complete, user exists, AND Supabase auth is ready
+    if (isLoading === false && loadingComplete && clerkUser?.id && isSupabaseAuthReady) {
       initAnalytics();
     }
-  }, [isLoading, loadingComplete, clerkUser?.id]);
+  }, [isLoading, loadingComplete, clerkUser?.id, isSupabaseAuthReady, getToken]);
 
   // End study session when component unmounts
   useEffect(() => {
     return () => {
-      if (currentStudySessionId && clerkUser?.id) {
-        console.log("Ending study session:", currentStudySessionId);
-        endStudySession(currentStudySessionId, clerkUser.id).catch(error => {
-          console.error("Error ending study session:", error);
-        });
+      if (currentStudySessionIdRef.current) {
+        console.log("Ending study session:", currentStudySessionIdRef.current);
+        // Use without token parameter to avoid JWT errors
+        endStudySession(currentStudySessionIdRef.current)
+          .catch(error => {
+            // Only log the error but don't throw it to prevent infinite loop
+            console.error("Error ending study session (non-critical):", error);
+          });
       }
     };
-  }, [currentStudySessionId, clerkUser?.id]);
+  }, []); // Empty dependency array - only run on unmount
 
   const handleAddChapter = useCallback(() => {
     setShowModal(true);
@@ -371,13 +384,20 @@ const ChapterInput = ({
             }));
             
             // If we're tracking a study session, update it with this chapter's topics
-            if (currentStudySessionId && chapter.topics && chapter.topics.length > 0) {
-              // In a real implementation, we would update the study session with these topic IDs
+            if (currentStudySessionIdRef.current && chapter.topics && chapter.topics.length > 0) {
+              // Actually update the study session in the database
               const topicIds = chapter.topics.map(t => t.id);
               console.log('Adding topics to study session:', {
-                sessionId: currentStudySessionId,
+                sessionId: currentStudySessionIdRef.current,
                 topicIds
               });
+              
+              // Call the new function to update the database
+              await updateStudySessionTopics(
+                currentStudySessionIdRef.current, 
+                topicIds,
+                token
+              );
             }
           }
           
@@ -401,7 +421,7 @@ const ChapterInput = ({
         setIsSaving(false);
       }
     },
-    [chapters, onSave, clerkUser, getToken, currentStudySessionId]
+    [chapters, onSave, clerkUser, getToken]
   );
 
   const handleTopicStudied = useCallback(
@@ -452,12 +472,19 @@ const ChapterInput = ({
             }));
             
             // If we're tracking a study session, update it with this topic
-            if (currentStudySessionId) {
-              // In a real implementation, we would update the study session with this topic ID
+            if (currentStudySessionIdRef.current) {
+              // Actually update the study session in the database
               console.log('Adding topic to study session:', {
-                sessionId: currentStudySessionId,
+                sessionId: currentStudySessionIdRef.current,
                 topicId: topic.id
               });
+              
+              // Call the new function to update the database
+              await updateStudySessionTopics(
+                currentStudySessionIdRef.current, 
+                [topic.id],
+                token
+              );
             }
           }
           // Optionally show a success message
@@ -475,7 +502,7 @@ const ChapterInput = ({
         setIsSaving(false);
       }
     },
-    [chapters, onSave, clerkUser, getToken, currentStudySessionId]
+    [chapters, onSave, clerkUser, getToken]
   );
 
   const handleRemoveChapter = useCallback(

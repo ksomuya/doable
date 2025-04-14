@@ -7,9 +7,10 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Zap,
   ClipboardList,
@@ -17,11 +18,13 @@ import {
   Bell,
   Focus,
   BookOpen,
+  X,
 } from "lucide-react-native";
 import ChapterInput from "./components/ChapterInput";
 import VirtualPet from "./components/VirtualPet";
 import UserStats from "./components/UserStats";
 import { useAppContext } from "./context/AppContext";
+import EvaluationScreen from "./evaluation";
 
 // Brand colors
 const COLORS = {
@@ -35,6 +38,7 @@ const COLORS = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { showEvaluation } = useLocalSearchParams<{ showEvaluation?: string }>();
   const {
     user,
     studiedChapters,
@@ -42,6 +46,20 @@ export default function HomeScreen() {
     practiceSession,
   } = useAppContext();
   const questionsAnswered = practiceSession?.questionsAnswered || 0;
+  const [evaluationVisible, setEvaluationVisible] = useState(false);
+
+  // Show evaluation if the parameter is present
+  useEffect(() => {
+    if (showEvaluation === "true") {
+      setEvaluationVisible(true);
+    }
+  }, [showEvaluation]);
+
+  const handleCloseEvaluation = () => {
+    setEvaluationVisible(false);
+    // Remove the parameter from the URL
+    router.setParams({});
+  };
 
   const handleProfilePress = () => {
     router.push("/profile");
@@ -78,6 +96,23 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      
+      {/* Evaluation Modal */}
+      <Modal
+        visible={evaluationVisible}
+        animationType="slide"
+        onRequestClose={handleCloseEvaluation}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={handleCloseEvaluation}
+          >
+            <X size={24} color="#000" />
+          </TouchableOpacity>
+          <EvaluationScreen inModal={true} onFinish={handleCloseEvaluation} />
+        </View>
+      </Modal>
       
       {/* Top Content Area - Pet and Floating UI */}
       <View style={styles.topContent}>
@@ -363,5 +398,18 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: "600",
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "#FFF",
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    padding: 8,
   },
 });

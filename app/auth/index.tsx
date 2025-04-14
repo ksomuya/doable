@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Image } from "expo-image";
 import { ArrowRight } from "lucide-react-native";
 import { useOAuth } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
+import { useAuth } from "@clerk/clerk-expo";
 
 const { height } = Dimensions.get("window");
 
@@ -28,9 +29,18 @@ const AuthScreen = () => {
   const [authError, setAuthError] = useState<string | null>(null);
   const buttonOpacity = React.useRef(new Animated.Value(1)).current;
   const buttonScale = React.useRef(new Animated.Value(1)).current;
-
-  // Set up OAuth with Clerk
+  const { isSignedIn } = useAuth();
+  
+  // Set up OAuth with Clerk - moved here to ensure it's always called
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+
+  // Use useEffect for navigation instead of doing it during render
+  useEffect(() => {
+    // Only navigate if user is signed in
+    if (isSignedIn) {
+      router.replace("/");
+    }
+  }, [isSignedIn]);
 
   // Function to safely navigate to onboarding
   const safeNavigateToOnboarding = useCallback(() => {
@@ -124,6 +134,16 @@ const AuthScreen = () => {
       setIsLoading(false);
     }
   }, [startOAuthFlow, safeNavigateToOnboarding]);
+
+  // If user is signed in, show loading screen until navigation happens
+  if (isSignedIn) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#ED7930" />
+        <Text style={{ marginTop: 16, fontSize: 16 }}>Already signed in, redirecting...</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

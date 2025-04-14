@@ -1,241 +1,218 @@
-Below is a **copy‑paste‑ready “Cursor todo list.”**  
-Put it into a single **`TASKS.md`** file (or straight into Cursor’s command bar) and run each task from top to bottom.  
-Every task is already phrased the way Cursor understands:
+Here is your full plan converted into a clean **step-by-step checklist** for Cursor or Notion-style tracking:
 
 ---
 
-### 0. Bootstrap
-- [ ] **Install native packages**  
-  `cursor add expo-focus-mode react-native-notifications lottie-react-native react-native-confetti`  
-  _Then_ run `npx pod-install` for iOS.
-- [ ] **Create `src/providers/AuthProvider.tsx`**  
-  ```tsx
-  // provides Splash‑screen auth check and context
-  ```
-- [ ] **Wrap `<App>` in `<AuthProvider>`** inside `App.tsx`.
+# ✅ Doable App – Implementation Checklist
 
 ---
 
-### 1. Splash‑screen & Auto‑login
-- [ ] **Inside `AuthProvider` add**  
-  ```ts
-  const { data } = await supabase.auth.getSession();
-  setState(data.session ? "ready" : "guest");
-  ```
-- [ ] **Delete** the redirect logic from `app/routes/index.tsx` (flicker fix).
+## **PHASE 1 — App Logic & Onboarding**
+
+- [x] **Auto Login with Clerk**
+  - [x] Ensure user session is persisted using Clerk
+  - [x] Redirect unauthenticated users to `/login`
+  - [x] Set Clerk token for Supabase API after login
+  - [x] Hide "Continue with Google" if user is already authenticated
+  
+  **Implementation Notes:**
+  - Enhanced SecureStore token cache in _layout.tsx to persist Clerk sessions
+  - Added AuthMiddleware component to handle authentication redirects
+  - Updated ClerkSupabaseSync to set Clerk JWT in Supabase client
+  - Added authentication check in auth screen to hide login button for authenticated users
+
+- [x] **Minimum Requirement after onboarding**
+  - [x] Add validation to block access to practice if no topic is selected
+  - [x] Use Supabase query or RPC to verify at least 1 topic exists
+  - [x] Allow subject selection only where topics are added in practice session
+  - [x] Initially topics need to be added in the home screen chapter input to start evaluation/practice session
+  - [x] For new users in practice session add a card for evaluation to see user current performance level
+
+  **Implementation Notes:**
+  - Added `hasAtLeastOneTopic` function to check if a user has selected at least one topic
+  - Updated the practice screen to block access if no topics are selected
+  - Added an evaluation card for new users in the practice screen
+  - Implemented topic check using Supabase RPC
+  - Created a clear user flow to add topics before starting practice
+
+- [x] **Initial Evaluation Test**
+  - [x] Trigger test only once after onboarding
+  - [x] Select 15 questions max from studied topics (≤ 2 questions per topics based on importance)
+  - [x] Save evaluation attempt results to `evt_question_attempts`
+  - [x] Store evaluation completion flag to avoid repetition
+
+  **Implementation Notes:**
+  - Created a dedicated evaluation screen with detailed question UI and results summary
+  - Added utility functions to fetch, save, and track evaluation data
+  - Implemented logic to select up to 15 questions with max 2 per topic, prioritizing by importance
+  - Added completion tracking to ensure evaluation is only taken once
+  - Stored evaluation results in the `evt_question_attempts` table
+  - Integrated evaluation into the app using modal-based navigation to work around routing limitations
 
 ---
 
-### 2. Skip “Continue with Google”
-- [ ] **DB migration `20240415_add_provider.sql`**
-  ```sql
-  ALTER TABLE public.users ADD COLUMN provider text;
-  ```
-- [ ] **Update trigger `handle_new_user()`** to set `provider`.
-- [ ] **Hide Google button** in `src/components/LoginCard.tsx` when `user.provider`.
+## **PHASE 2 — Reports & Study Analytics**
+---
+
+#### 2‑A  Detailed Performance Reports
+- [x] **Create RPC `get_detailed_metrics`**
+  - [x] Returns accuracy %, avg time, avg difficulty by subject / chapter / topic  
+- [x] **Add columns to `evt_question_attempts`**
+  - [x] `avg_time_sec`  
+  - [x] `avg_difficulty`
+- [x] **Back‑fill historical rows**
+- [x] **Extend roll‑up functions**
+  - [x] `fn_rollup_daily()`  
+  - [x] `fn_rollup_weekly()`
+- [x] **Build “Performance” tab in `reports`**
+  - [x] Bar chart — Accuracy by subject  
+  - [x] Heat‑map — Time × Difficulty by topic  
+  - [x] Period selector (Daily / Weekly / Custom)
 
 ---
 
-### 3. Onboarding topic guard
-- [ ] **RPC `has_minimum_topics.sql`**
-  ```sql
-  CREATE OR REPLACE FUNCTION has_minimum_topics(p_uid text)
-  RETURNS boolean
-  LANGUAGE sql SECURITY DEFINER AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM user_studied_topics
-    WHERE user_id = p_uid
-  );
-  $$;
-  ```
-- [ ] **Disable “Start Practice” CTA** in `/home` when RPC returns false.
+#### 2‑B  Exam Readiness Meter
+- [ ] **Verify / finish `fn_calculate_readiness` output**
+  - [ ] readiness_score 0‑100  
+  - [ ] weakest_subjects JSON  
+  - [ ] weakest_topics JSON
+- [ ] **Schedule nightly cron** to refresh `rep_exam_readiness`
+- [ ] **Add Readiness card to `reports`**
+  - [ ] Circular gauge 0‑100  
+  - [ ] Colour bands + label
+- [ ] **Modal on tap**
+  - [ ] List weakest subjects & topics  
+  - [ ] CTA “Start Refine Session”
+- [ ] **Empty‑state nudge** when no data
 
 ---
 
-
-## 4. **Bite‑size Evaluation Test (max 15 Qs)**
-
-> Replaces the previous “30‑question evaluation” task.
-
-- [ ] **Migration `20240415_initial_evaluation.sql`**
-  ```sql
-  CREATE TABLE initial_evaluations (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id text REFERENCES users(id),
-    completed_at timestamptz
-  );
-  ```
-- [ ] **Edge function `start_initial_test.ts`**
-  1. **Inputs**: `user_id`.
-  2. If the user already has a row in `initial_evaluations`, return `null`.
-  3. Else:
-     - Insert row.
-     - Query **15 questions total**:  
-       ```sql
-       WITH pool AS (
-         SELECT q.id, row_number() OVER (PARTITION BY subject_id ORDER BY random()) AS rn
-         FROM questions q
-         JOIN topics  t ON t.id = q.topic_id
-         WHERE t.id = ANY (:userTopicIds)
-       )
-       SELECT id
-       FROM pool
-       WHERE rn <= 5   -- at most 5 per subject so it never overwhelms
-       LIMIT 15;
-       ```
-     - Return the 15 IDs.
-- [ ] **Route `/evaluation`**
-  - Only mounts when `start_initial_test` returns IDs.
-  - Re‑uses the normal question UI.
-  - On completion, attempts are written to `evt_question_attempts`; nothing else needed.
+#### 2‑C  Study Habits Insights
+- [ ] **Extend `rep_daily_overview`**
+  - [ ] Practice minutes per hour bucket
+- [ ] **RPC `get_study_habits`**
+  - [ ] streaks, longest streak  
+  - [ ] day‑of‑week consistency  
+  - [ ] best_hour_utc
+- [ ] **Habits tab in `study habits`**
+  - [ ] Streak calendar heat‑map  
+  - [ ] Bar chart minutes per weekday  
+  - [ ] Highlight card “Best focus time”
+- [ ] **Pass `best_hour_utc` to push‑reminder scheduler**
 
 ---
 
-## 5. **Distraction‑Shield (overlay instead of native Focus Mode)**
-
-> Replaces the “native Focus Mode API” section.
-
-### 5‑A Android overlay
-- [ ] **Add package**  
-  `cursor add react-native-android-overlay-permission`
-- [ ] **Create service `DistractionShieldService.kt`**
-  - Requests `SYSTEM_ALERT_WINDOW` & `PACKAGE_USAGE_STATS`.
-  - Polls `UsageStatsManager` every 2 s.
-  - If the foreground package **matches a blocked list** (`instagram`, `tiktok`, `twitter`, etc.), launches `ShieldActivity` (full‑screen, non‑dismissable for 10 s) that says:  
-    > “Hey 👋 Time to practise! Tap here to jump back to Doable.”
-- [ ] **JS wrapper `useDistractionShield.ts`**
-  ```ts
-  import { startShield, stopShield } from 'react-native-android-overlay-permission';
-  ```
-  - Start on app **background** (`AppState === 'background'`) and stop when foreground again.
-
-### 5‑B iOS fallback
-*(True overlays aren’t allowed on iOS.)*
-- [ ] **Schedule “nudge” local push** whenever the app goes to background **and** ScreenTime category = Social.  
-  - Use `DeviceActivityReport` + `ManagedSettings` APIs (iOS 16+).
-  - The notification deep‑links to `doable://practice`.
+#### 2‑D  Motivational Nudges
+- [ ] Detect “no data” state (`evt_question_attempts` count == 0)
+- [ ] Display Nudge component
+  - [ ] Illustration + copy  
+  - [ ] Button “Start Practice”
+- [ ] Emit analytics event `NudgeShown`
 
 ---
 
-## 6. Study Reports (detailed metrics **+ exam readiness card**)
+## **PHASE 3 — Smart Practice System**
 
-> Exam readiness is now **inside** `/progress` instead of a new page.
+- [ ] **Avoid Question Repeats**
+  - [ ] Exclude questions attempted in last 30 days
+  - [ ] Add fallback when question pool is low
 
-- [ ] **Cron job** *(same as before)* to keep `rep_exam_readiness` fresh.
-- [ ] **Extend `/progress` dashboard**
-  1. Add a new **`<ExamReadinessCard>`** at the top‑right:  
-     - Shows gauge (0‑100) + label (“Almost there”, “Needs work”…).  
-     - Click → modal with weakest subjects/topics list.
-  2. Remove the old “Exam Readiness” route from router config.
-### 7. Smart practice CAT
-- [ ] **Edge RPC `select_next_questions.sql`**
-  ```sql
-  -- mode = refine | recall | conquer
-  ```
-  (use `dim_topic_mastery` thresholds 0.4 / 0.7)
-- [ ] **Modify `/practice` loader** to call this RPC instead of raw query.
+- [ ] **Topic Mastery Tracking**
+  - [ ] Display topic progress using `dim_topic_mastery`
+  - [ ] Show progress inside question session view
 
----
-
-### 8. Prevent question repeats
-- [ ] **Update question fetch**  
-  ```sql
-  AND NOT EXISTS (
-    SELECT 1 FROM evt_question_attempts a
-    WHERE a.user_id = :uid
-      AND a.question_id = q.id
-      AND a.completed_at > now() - interval '30 days'
-  )
-  ```
+- [ ] **Refine / Recall / Conquer Logic**
+  - [ ] Categorize topics based on mastery level:
+    - Refine: < 0.4
+    - Recall: 0.4 – 0.7
+    - Conquer: > 0.7
+  - [ ] Use RPC to fetch questions based on mode
+  - [ ] Remove user manual selection for questions
 
 ---
 
-### 9. Topic‑level spaced repetition
-- [ ] **Table `dim_topic_review_schedule`**  
-  ```sql
-  user_id text, topic_id uuid, ease_factor numeric, next_review_date date
-  ```
-- [ ] **Rewrite trigger `trg_update_spaced_repetition()`** to operate on that table.
-- [ ] **Build route `/spaced-review`** that lists today’s due topics → question flow.
+## **PHASE 4 — Spaced Repetition & Active Recall**
+
+- [ ] **Topic-Level Spaced Repetition**
+  - [ ] Create or update `dim_topic_review_schedule`
+  - [ ] Track ease factor and next review date per topic
+  - [ ] Rewrite repetition logic to be topic-based
+
+- [ ] **Review Session Flow**
+  - [ ] Build `/spaced-review` page
+  - [ ] Display only due topics
+  - [ ] Start review session with those topics
 
 ---
 
-### 10. Native Focus mode & notifications
-- [ ] **Hook `useFocusMode.ts`**  
-  ```ts
-  FocusMode.start(); // on session start
-  FocusMode.stop();  // on end
-  ```
-- [ ] **Ask notification permission** at first login, save `expo_push_token` into `user_profiles`.
-- [ ] **Edge job `schedule_study_reminders.ts`**  
-  - Query `rep_daily_overview.best_hour_utc`  
-  - Insert local push via Supabase `pg_cron`.
+## **PHASE 5 — Native Device Features**
+
+- [ ] **Distraction Shield for Android**
+  - [ ] Detect usage of distracting apps (Instagram, TikTok, etc.)
+  - [ ] Overlay motivational message to return to Doable
+
+- [ ] **Distraction Nudges for iOS**
+  - [ ] Use Screen Time APIs (if possible)
+  - [ ] Trigger local push notification to bring user back
+
+- [ ] **Push Notifications**
+  - [ ] Ask notification permission on login
+  - [ ] Store Expo token in Supabase
+  - [ ] Schedule reminder based on best hour from reports
 
 ---
 
-### 11. XP goals & bonus
-- [ ] **Migration** `ALTER TABLE user_profiles ADD COLUMN daily_xp_goal int;`
-- [ ] **Modal `SetGoalModal.tsx`** opens before every session.
-- [ ] **Edge RPC `grant_bonus_xp.sql`** multiplies XP by 1.05 / 1.10 / 1.15.
+## **PHASE 6 — XP System & Gamification**
+
+- [ ] **Set XP Goals Before Practice**
+  - [ ] Prompt user to select XP target before session
+  - [ ] Track XP earned in session
+  - [ ] Apply percentage bonus based on goal size
+
+- [ ] **Dopamine Hit Visuals**
+  - [ ] Show sad pet animation on wrong answer
+  - [ ] Show confetti + happy pet after 5–10 correct answers
+
+- [ ] **Random Reward System**
+  - [ ] 20% chance to show surprise reward after session
+  - [ ] Include bonus XP, badges, animations, etc.
 
 ---
 
-### 12. Dopamine animations
-- [ ] **Import Lottie** files `sad_pet.json`, `happy_pet.json`.
-- [ ] **Play sad animation** on wrong answer.  
-- [ ] **Maintain counter** in Redux; on 5th correct play confetti + happy animation.
+## **PHASE 7 — Profile & Settings**
+
+- [ ] **Simplify Profile Setup**
+  - [ ] Ask only for date of birth and parent's mobile
+  - [ ] Remove name fields or make them optional
+
+- [ ] **Delete Account Option**
+  - [ ] Add button in settings page
+  - [ ] Remove user from Clerk
+  - [ ] Anonymize email and phone in Supabase
+  - [ ] Retain learning data (anonymized)
+
+- [ ] **Bookmarks**
+  - [ ] Allow bookmarking of questions during practice
+  - [ ] Create a bookmarks section in profile
+  - [ ] Show all bookmarked questions in one view
 
 ---
 
-### 13. Random rewards
-- [ ] **After `/practice/summary`**  
-  ```ts
-  if (Math.random() < 0.2) open(<RewardModal />);
-  ```
+## **PHASE 8 — QA & Testing**
+
+- [ ] **Backend Tests**
+  - [ ] Add Jest tests for:
+    - Practice session selector
+    - Evaluation logic
+    - Spaced repetition
+
+- [ ] **Frontend QA**
+  - [ ] Add Cypress tests for:
+    - Onboarding & topic guard
+    - Evaluation session
+    - Practice modes
+    - Reports dashboard
+    - Bookmarks
 
 ---
 
-### 14. Profile simplification
-- [ ] **SQL**  
-  ```sql
-  ALTER TABLE public.users
-    ALTER COLUMN first_name DROP NOT NULL,
-    ALTER COLUMN last_name DROP NOT NULL;
-  ```
-- [ ] **Remove name fields** from `/setup-profile` form.
-
----
-
-### 15. Delete account
-- [ ] **Edge function `delete_account.ts`**
-  ```ts
-  await supabase.auth.admin.deleteUser(uid);
-  await supabase
-    .from('users')
-    .update({ email: null, phone: null, provider: null })
-    .eq('id', uid);
-  ```
-- [ ] **Danger button** in `/settings`.
-
----
-
-### 16. Bookmarks
-- [ ] **Table `bookmarks`**  
-  `user_id text, question_id uuid, created_at timestamptz default now()`
-- [ ] **Bookmark icon** in `QuestionHeader.tsx` toggles row.
-- [ ] **Route `/profile/bookmarks`** shows saved questions.
-
----
-
-### 17. QA & tests
-- [ ] **Add Cypress spec** `onboarding_e2e.cy.ts`.
-- [ ] **Add Jest tests** for `select_next_questions`, `grant_bonus_xp`, `delete_account`.
-- [ ] **Emit Segment events** in each new edge function.
-
----
-
-**That’s it.**  
-Run tasks sequentially; after every section, execute `npm run test && npx cypress run` to make sure nothing broke.
-
-Happy shipping!
+Let me know if you want this converted into a `.md` file or pasted directly into Cursor task format.

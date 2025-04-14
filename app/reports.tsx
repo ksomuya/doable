@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Animated,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import {
@@ -31,11 +32,21 @@ import {
   Brain,
   BookOpenCheck,
   Sword,
+  ChevronDown,
+  AlertCircle,
+  Timer,
+  BarChart2, 
+  BookMarked,
+  Clock3,
+  ThermometerSun,
 } from "lucide-react-native";
 import { useAppContext } from "./context/AppContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from './utils/supabase';
 import { updateUserReports } from './utils/analyticsUtils';
+import ReadinessMeter from './components/ReadinessMeter';
+import ReadinessDetailsModal from './components/ReadinessDetailsModal';
+import ReadinessEmptyState from './components/ReadinessEmptyState';
 
 interface StudySession {
   time: string;
@@ -54,10 +65,30 @@ interface DailyAnalyticsData {
   accuracy?: number;
 }
 
+interface PerformanceData {
+  subjectMetrics: {
+    entity_id: string;
+    entity_name: string;
+    accuracy_pct: number;
+    avg_time_sec: number;
+    attempts_count: number;
+  }[];
+  topicMetrics: {
+    entity_id: string;
+    entity_name: string;
+    accuracy_pct: number;
+    avg_time_sec: number;
+    avg_difficulty: number;
+    attempts_count: number;
+  }[];
+  isLoading: boolean;
+}
+
 interface AnalyticsState {
   dailyData: DailyAnalyticsData | null;
   weeklyData: any | null;
   monthlyData: any | null;
+  performanceData: PerformanceData | null;
   isLoading: boolean;
 }
 
@@ -65,10 +96,20 @@ export default function ReportsScreen() {
   const router = useRouter();
   const { user } = useAppContext();
   const [activeTab, setActiveTab] = useState("daily");
+  const [performancePeriod, setPerformancePeriod] = useState("weekly");
+  const [showPeriodSelector, setShowPeriodSelector] = useState(false);
+  const [readinessModalVisible, setReadinessModalVisible] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsState>({
     dailyData: null,
     weeklyData: null,
     monthlyData: null,
+    performanceData: null,
+    isLoading: true,
+  });
+  const [readinessData, setReadinessData] = useState({
+    readinessScore: 0,
+    weakestSubjects: [],
+    weakestTopics: [],
     isLoading: true,
   });
 
@@ -76,7 +117,65 @@ export default function ReportsScreen() {
     router.back();
   };
 
-  // Trigger reports update when the screen loads
+  // Open readiness details modal
+  const handleOpenReadinessDetails = () => {
+    setReadinessModalVisible(true);
+  };
+
+  // Close readiness details modal
+  const handleCloseReadinessDetails = () => {
+    setReadinessModalVisible(false);
+  };
+
+  // Navigate to practice screen
+  const handleStartPractice = () => {
+    router.push('/practice');
+  };
+
+  // Fetch exam readiness data
+  const fetchReadinessData = async () => {
+    if (user?.email) {
+      try {
+        setReadinessData(prev => ({ ...prev, isLoading: true }));
+        
+        // Call the RPC to get readiness data
+        const { data, error } = await supabase.rpc(
+          'get_exam_readiness'
+        );
+        
+        if (error) {
+          console.error("Error fetching readiness data:", error);
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          // Convert subject and topic arrays to the correct format
+          const subjects = Array.isArray(data[0].weakest_subjects) ? data[0].weakest_subjects : [];
+          const topics = Array.isArray(data[0].weakest_topics) ? data[0].weakest_topics : [];
+          
+          setReadinessData({
+            readinessScore: data[0].readiness_score || 0,
+            weakestSubjects: subjects,
+            weakestTopics: topics,
+            isLoading: false,
+          });
+        } else {
+          // No data found
+          setReadinessData({
+            readinessScore: 0,
+            weakestSubjects: [],
+            weakestTopics: [],
+            isLoading: false,
+          });
+        }
+      } catch (error) {
+        console.error("Error in readiness fetch:", error);
+        setReadinessData(prev => ({ ...prev, isLoading: false }));
+      }
+    }
+  };
+
+  // Fetch analytics and readiness data when the screen loads
   useEffect(() => {
     if (user && user.email) {
       // Update reports in the background
@@ -84,126 +183,215 @@ export default function ReportsScreen() {
         .then(success => {
           if (success) {
             console.log('Reports updated successfully');
+            // Fetch readiness data after reports are updated
+            fetchReadinessData();
           }
         })
         .catch(error => {
           console.error('Error updating reports:', error);
         });
+         
+      // Fetch analytics data
+      const fetchAnalyticsData = async () => {
+        if (user && user.email) {
+          try {
+            // Get today's date and convert to ISO string format YYYY-MM-DD
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Fetch daily overview data
+            const { data: dailyOverview, error: dailyError } = await supabase
+              .from('rep_daily_overview')
+              .select('*')
+              .eq('user_id', user.email)
+              .eq('day', today)
+              .single();
+              
+            if (dailyError && dailyError.code !== 'PGRST116') {
+              console.error("Error fetching daily overview:", dailyError);
+            }
+            
+            // Fetch study sessions for today
+            const { data: studySessions, error: sessionsError } = await supabase
+              .from('evt_study_sessions')
+              .select('*')
+              .eq('user_id', user.email)
+              .gte('start_time', `${today}T00:00:00`)
+              .lt('start_time', `${today}T23:59:59`);
+              
+            if (sessionsError) {
+              console.error("Error fetching study sessions:", sessionsError);
+            }
+            
+            // Fetch studied topics for today
+            const { data: studiedTopics, error: topicsError } = await supabase
+              .from('user_studied_topics')
+              .select('topic_name, created_at')
+              .eq('user_id', user.email)
+              .eq('study_date', today);
+              
+            if (topicsError) {
+              console.error("Error fetching studied topics:", topicsError);
+            }
+            
+            // Fetch question attempts for today
+            const { data: questionAttempts, error: attemptsError } = await supabase
+              .from('evt_question_attempts')
+              .select('*')
+              .eq('user_id', user.email)
+              .gte('completed_at', `${today}T00:00:00`)
+              .lt('completed_at', `${today}T23:59:59`);
+              
+            if (attemptsError) {
+              console.error("Error fetching question attempts:", attemptsError);
+            }
+            
+            // Calculate daily metrics
+            const totalQuestions = questionAttempts?.length || 0;
+            const correctAnswers = questionAttempts?.filter(q => q.is_correct)?.length || 0;
+            const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+            
+            // Format study sessions
+            const sessions = studySessions?.map((session: any) => {
+              const startTime = new Date(session.start_time);
+              const duration = session.duration_minutes || 
+                (session.end_time ? Math.round((new Date(session.end_time).getTime() - startTime.getTime()) / (1000 * 60)) : 0);
+                
+              return {
+                time: startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                duration: duration,
+                score: Math.floor(Math.random() * 30) + 70 // Placeholder score since we don't track per-session score
+              };
+            }) || [];
+            
+            // Aggregate study time
+            const studyTime = sessions.reduce((sum, session) => sum + (session.duration || 0), 0) / 60; // Convert to hours
+            
+            // Build the daily data object
+            const calculatedDailyData: DailyAnalyticsData = {
+              date: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+              totalQuestions,
+              correctAnswers,
+              accuracy,
+              averageTime: questionAttempts?.reduce((sum: number, q: any) => sum + (q.time_taken_seconds || 0), 0) / (totalQuestions || 1),
+              studyTime: studyTime > 0 ? studyTime : dailyOverview?.study_minutes_total ? dailyOverview.study_minutes_total / 60 : 0,
+              topicsStudied: studiedTopics?.map(t => t.topic_name) || [],
+              sessions: sessions.length > 0 ? sessions : [
+                { time: "8:30 AM", duration: 45, score: 85 },
+                { time: "1:15 PM", duration: 30, score: 92 },
+              ],
+            };
+            
+            setAnalyticsData({
+              dailyData: calculatedDailyData,
+              weeklyData: null, // Placeholder - would come from real data
+              monthlyData: null, // Placeholder - would come from real data
+              performanceData: null,
+              isLoading: false,
+            });
+            
+          } catch (error) {
+            console.error("Error in analytics fetch:", error);
+            setAnalyticsData(prev => ({ ...prev, isLoading: false }));
+          }
+        }
+      };
+      
+      fetchAnalyticsData();
+      fetchPerformanceData();
     }
   }, [user?.email]);
 
-  // Fetch analytics data from Supabase
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      if (user && user.email) {
-        try {
-          // Get today's date and convert to ISO string format YYYY-MM-DD
-          const today = new Date().toISOString().split('T')[0];
-          
-          // Fetch daily overview data
-          const { data: dailyOverview, error: dailyError } = await supabase
-            .from('rep_daily_overview')
-            .select('*')
-            .eq('user_id', user.email)
-            .eq('day', today)
-            .single();
-            
-          if (dailyError && dailyError.code !== 'PGRST116') {
-            console.error("Error fetching daily overview:", dailyError);
-          }
-          
-          // Fetch study sessions for today
-          const { data: studySessions, error: sessionsError } = await supabase
-            .from('evt_study_sessions')
-            .select('*')
-            .eq('user_id', user.email)
-            .gte('start_time', `${today}T00:00:00`)
-            .lt('start_time', `${today}T23:59:59`);
-            
-          if (sessionsError) {
-            console.error("Error fetching study sessions:", sessionsError);
-          }
-          
-          // Fetch studied topics for today
-          const { data: studiedTopics, error: topicsError } = await supabase
-            .from('user_studied_topics')
-            .select('topic_name, created_at')
-            .eq('user_id', user.email)
-            .eq('study_date', today);
-            
-          if (topicsError) {
-            console.error("Error fetching studied topics:", topicsError);
-          }
-          
-          // Fetch question attempts for today
-          const { data: questionAttempts, error: attemptsError } = await supabase
-            .from('evt_question_attempts')
-            .select('*')
-            .eq('user_id', user.email)
-            .gte('completed_at', `${today}T00:00:00`)
-            .lt('completed_at', `${today}T23:59:59`);
-            
-          if (attemptsError) {
-            console.error("Error fetching question attempts:", attemptsError);
-          }
-          
-          // Calculate daily metrics
-          const totalQuestions = questionAttempts?.length || 0;
-          const correctAnswers = questionAttempts?.filter(q => q.is_correct)?.length || 0;
-          const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-          
-          // Format study sessions
-          const sessions = studySessions?.map((session: any) => {
-            const startTime = new Date(session.start_time);
-            const duration = session.duration_minutes || 
-              (session.end_time ? Math.round((new Date(session.end_time).getTime() - startTime.getTime()) / (1000 * 60)) : 0);
-              
-            return {
-              time: startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              duration: duration,
-              score: Math.floor(Math.random() * 30) + 70 // Placeholder score since we don't track per-session score
-            };
-          }) || [];
-          
-          // Aggregate study time
-          const studyTime = sessions.reduce((sum, session) => sum + (session.duration || 0), 0) / 60; // Convert to hours
-          
-          // Build the daily data object
-          const calculatedDailyData: DailyAnalyticsData = {
-            date: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
-            totalQuestions,
-            correctAnswers,
-            accuracy,
-            averageTime: questionAttempts?.reduce((sum: number, q: any) => sum + (q.time_taken_seconds || 0), 0) / (totalQuestions || 1),
-            studyTime: studyTime > 0 ? studyTime : dailyOverview?.study_minutes_total ? dailyOverview.study_minutes_total / 60 : 0,
-            topicsStudied: studiedTopics?.map(t => t.topic_name) || [],
-            sessions: sessions.length > 0 ? sessions : [
-              { time: "8:30 AM", duration: 45, score: 85 },
-              { time: "1:15 PM", duration: 30, score: 92 },
-            ],
-          };
-          
-          // Calculate weekly data (using some placeholders for now)
-          // Ideally this would come from rep_weekly_overview but for now we'll calculate from available data
-          
-          // In a production app, you would fetch weekly and monthly data similarly
-          
-          setAnalyticsData({
-            dailyData: calculatedDailyData,
-            weeklyData: null, // Placeholder - would come from real data
-            monthlyData: null, // Placeholder - would come from real data
-            isLoading: false,
-          });
-          
-        } catch (error) {
-          console.error("Error in analytics fetch:", error);
-          setAnalyticsData(prev => ({ ...prev, isLoading: false }));
+  // Fetch performance data from Supabase using the RPC
+  const fetchPerformanceData = async () => {
+    if (user && user.email) {
+      try {
+        setAnalyticsData(prev => ({ ...prev, isLoading: true }));
+        
+        // Get date range based on selected period
+        let startDate: string | null = null;
+        const today = new Date();
+        const endDate = today.toISOString();
+        
+        if (performancePeriod === "daily") {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          startDate = yesterday.toISOString();
+        } else if (performancePeriod === "weekly") {
+          const lastWeek = new Date(today);
+          lastWeek.setDate(lastWeek.getDate() - 7);
+          startDate = lastWeek.toISOString();
+        } else if (performancePeriod === "monthly") {
+          const lastMonth = new Date(today);
+          lastMonth.setMonth(lastMonth.getMonth() - 1);
+          startDate = lastMonth.toISOString();
+        } else if (performancePeriod === "all") {
+          startDate = null; // No start date means all time
         }
+        
+        // Call the get_detailed_metrics RPC for subject level metrics
+        const { data: subjectData, error: subjectError } = await supabase.rpc(
+          'get_detailed_metrics',
+          {
+            p_user_id: user.email,
+            p_period_start: startDate,
+            p_period_end: endDate,
+            p_granularity: 'subject'
+          }
+        );
+        
+        if (subjectError) {
+          console.error("Error fetching subject metrics:", subjectError);
+          throw subjectError;
+        }
+        
+        // Call the get_detailed_metrics RPC for topic level metrics
+        const { data: topicData, error: topicError } = await supabase.rpc(
+          'get_detailed_metrics',
+          {
+            p_user_id: user.email,
+            p_period_start: startDate,
+            p_period_end: endDate,
+            p_granularity: 'topic'
+          }
+        );
+        
+        if (topicError) {
+          console.error("Error fetching topic metrics:", topicError);
+          throw topicError;
+        }
+        
+        // Update state with the performance data
+        setAnalyticsData(prev => ({
+          ...prev,
+          performanceData: {
+            subjectMetrics: subjectData || [],
+            topicMetrics: topicData || [],
+            isLoading: false
+          },
+          isLoading: false
+        }));
+        
+      } catch (error) {
+        console.error("Error fetching performance data:", error);
+        setAnalyticsData(prev => ({ 
+          ...prev, 
+          performanceData: {
+            subjectMetrics: [],
+            topicMetrics: [],
+            isLoading: false
+          },
+          isLoading: false 
+        }));
       }
-    };
-    
-    fetchAnalyticsData();
-  }, [user?.email]);
+    }
+  };
+
+  // Refetch performance data when period changes
+  useEffect(() => {
+    if (user?.email) {
+      fetchPerformanceData();
+    }
+  }, [performancePeriod, user?.email]);
 
   // Mock data for performance metrics (used as fallback if real data isn't available)
   const dailyData = analyticsData.dailyData || {
@@ -843,6 +1031,416 @@ export default function ReportsScreen() {
     );
   };
 
+  const renderPerformanceTab = () => {
+    // Animation values 
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+    
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    // Handle loading state
+    if (analyticsData.isLoading || !analyticsData.performanceData) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={styles.loadingText}>Loading performance data...</Text>
+        </View>
+      );
+    }
+
+    const performanceData = analyticsData.performanceData;
+    const { subjectMetrics, topicMetrics } = performanceData;
+    
+    // Format data for subject accuracy bar chart
+    const subjectAccuracyData = subjectMetrics
+      .sort((a, b) => b.accuracy_pct - a.accuracy_pct)
+      .slice(0, 5); // Show top 5 subjects
+    
+    // Get max width for bars
+    const maxBarWidth = Dimensions.get("window").width - 100;
+    
+    // Filter topics with enough data for the heatmap
+    const heatmapTopics = topicMetrics
+      .filter(topic => topic.attempts_count >= 3)  // Only topics with enough attempts
+      .sort((a, b) => a.avg_difficulty - b.avg_difficulty)
+      .slice(0, 10); // Show top 10 topics
+    
+    // Calculate max values for scaling
+    const maxTime = Math.max(...heatmapTopics.map(t => t.avg_time_sec), 60);
+    const maxDifficulty = Math.max(...heatmapTopics.map(t => t.avg_difficulty), 3);
+    
+    // Function to determine heat color based on time and difficulty
+    const getHeatColor = (time: number, difficulty: number) => {
+      // Normalize values to 0-1 range
+      const normalizedTime = Math.min(time / maxTime, 1);
+      const normalizedDifficulty = Math.min(difficulty / maxDifficulty, 1);
+      
+      // Calculate heat index (0-1)
+      const heatIndex = (normalizedTime + normalizedDifficulty) / 2;
+      
+      if (heatIndex < 0.3) return "#10B981"; // Green - easy
+      if (heatIndex < 0.5) return "#0EA5E9"; // Blue - medium-easy
+      if (heatIndex < 0.7) return "#F59E0B"; // Yellow - medium
+      if (heatIndex < 0.85) return "#F97316"; // Orange - medium-hard
+      return "#EF4444"; // Red - hard
+    };
+
+    // Handle period selection
+    const handlePeriodChange = (period: string) => {
+      setPerformancePeriod(period);
+      setShowPeriodSelector(false);
+    };
+
+    return (
+      <Animated.View 
+        style={[
+          styles.tabContent, 
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}
+      >
+        {/* Period Selector */}
+        <View style={styles.periodSelectorContainer}>
+          <Text style={styles.periodSelectorLabel}>View data for:</Text>
+          <TouchableOpacity 
+            style={styles.periodSelectorButton}
+            onPress={() => setShowPeriodSelector(!showPeriodSelector)}
+          >
+            <Text style={styles.periodSelectorButtonText}>
+              {performancePeriod === "daily" ? "Last 24 Hours" : 
+               performancePeriod === "weekly" ? "Last 7 Days" : 
+               performancePeriod === "monthly" ? "Last 30 Days" : "All Time"}
+            </Text>
+            <ChevronDown size={16} color="#4B5563" />
+          </TouchableOpacity>
+          
+          {showPeriodSelector && (
+            <View style={styles.periodDropdown}>
+              <TouchableOpacity 
+                style={styles.periodOption}
+                onPress={() => handlePeriodChange("daily")}
+              >
+                <Text style={[
+                  styles.periodOptionText, 
+                  performancePeriod === "daily" && styles.periodOptionSelected
+                ]}>Last 24 Hours</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.periodOption}
+                onPress={() => handlePeriodChange("weekly")}
+              >
+                <Text style={[
+                  styles.periodOptionText, 
+                  performancePeriod === "weekly" && styles.periodOptionSelected
+                ]}>Last 7 Days</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.periodOption}
+                onPress={() => handlePeriodChange("monthly")}
+              >
+                <Text style={[
+                  styles.periodOptionText, 
+                  performancePeriod === "monthly" && styles.periodOptionSelected
+                ]}>Last 30 Days</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.periodOption}
+                onPress={() => handlePeriodChange("all")}
+              >
+                <Text style={[
+                  styles.periodOptionText, 
+                  performancePeriod === "all" && styles.periodOptionSelected
+                ]}>All Time</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Performance Overview Card */}
+        <View style={styles.performanceOverviewCard}>
+          <View style={styles.performanceHeader}>
+            <BarChart2 size={20} color="#4F46E5" />
+            <Text style={styles.performanceTitle}>Performance Overview</Text>
+          </View>
+          
+          <View style={styles.performanceStats}>
+            <View style={styles.performanceStat}>
+              <View style={[styles.statIcon, { backgroundColor: "#EEF2FF" }]}>
+                <BookMarked size={16} color="#4F46E5" />
+              </View>
+              <View>
+                <Text style={styles.statValue}>
+                  {subjectMetrics.reduce((sum, subject) => sum + subject.attempts_count, 0)}
+                </Text>
+                <Text style={styles.statLabel}>Questions</Text>
+              </View>
+            </View>
+            
+            <View style={styles.performanceStat}>
+              <View style={[styles.statIcon, { backgroundColor: "#ECFDF5" }]}>
+                <Check size={16} color="#10B981" />
+              </View>
+              <View>
+                <Text style={styles.statValue}>
+                  {Math.round(subjectMetrics.reduce((sum, subject) => 
+                    sum + (subject.accuracy_pct * subject.attempts_count), 0) / 
+                    Math.max(1, subjectMetrics.reduce((sum, subject) => sum + subject.attempts_count, 0)))}%
+                </Text>
+                <Text style={styles.statLabel}>Accuracy</Text>
+              </View>
+            </View>
+            
+            <View style={styles.performanceStat}>
+              <View style={[styles.statIcon, { backgroundColor: "#F0F9FF" }]}>
+                <Clock3 size={16} color="#0EA5E9" />
+              </View>
+              <View>
+                <Text style={styles.statValue}>
+                  {Math.round(subjectMetrics.reduce((sum, subject) => 
+                    sum + (subject.avg_time_sec * subject.attempts_count), 0) / 
+                    Math.max(1, subjectMetrics.reduce((sum, subject) => sum + subject.attempts_count, 0)))}s
+                </Text>
+                <Text style={styles.statLabel}>Avg Time</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Subject Accuracy Bar Chart */}
+        <View style={styles.barChartCard}>
+          <View style={styles.barChartHeader}>
+            <BarChart size={20} color="#4F46E5" />
+            <Text style={styles.barChartTitle}>Accuracy by Subject</Text>
+          </View>
+          
+          {subjectAccuracyData.length > 0 ? (
+            <View style={styles.barChartContent}>
+              {subjectAccuracyData.map((subject, index) => (
+                <View key={index} style={styles.barChartRow}>
+                  <Text style={styles.barChartLabel} numberOfLines={1} ellipsizeMode="tail">
+                    {subject.entity_name}
+                  </Text>
+                  <View style={styles.barChartBarContainer}>
+                    <View 
+                      style={[
+                        styles.barChartBar,
+                        { 
+                          width: `${Math.min(100, subject.accuracy_pct)}%`,
+                          backgroundColor: subject.accuracy_pct > 80 ? "#10B981" : 
+                                          subject.accuracy_pct > 60 ? "#F59E0B" : "#EF4444"
+                        }
+                      ]}
+                    />
+                    <Text style={styles.barChartValue}>{Math.round(subject.accuracy_pct)}%</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noDataContainer}>
+              <AlertCircle size={24} color="#9CA3AF" />
+              <Text style={styles.noDataText}>No subject data available for this period</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Time × Difficulty Heat Map */}
+        <View style={styles.heatMapCard}>
+          <View style={styles.heatMapHeader}>
+            <ThermometerSun size={20} color="#4F46E5" />
+            <Text style={styles.heatMapTitle}>Time × Difficulty by Topic</Text>
+          </View>
+          
+          <View style={styles.heatMapLegend}>
+            <View style={styles.heatMapLegendItem}>
+              <View style={[styles.heatMapLegendColor, { backgroundColor: "#10B981" }]} />
+              <Text style={styles.heatMapLegendText}>Easy</Text>
+            </View>
+            <View style={styles.heatMapLegendItem}>
+              <View style={[styles.heatMapLegendColor, { backgroundColor: "#0EA5E9" }]} />
+              <Text style={styles.heatMapLegendText}>Medium-Easy</Text>
+            </View>
+            <View style={styles.heatMapLegendItem}>
+              <View style={[styles.heatMapLegendColor, { backgroundColor: "#F59E0B" }]} />
+              <Text style={styles.heatMapLegendText}>Medium</Text>
+            </View>
+            <View style={styles.heatMapLegendItem}>
+              <View style={[styles.heatMapLegendColor, { backgroundColor: "#F97316" }]} />
+              <Text style={styles.heatMapLegendText}>Medium-Hard</Text>
+            </View>
+            <View style={styles.heatMapLegendItem}>
+              <View style={[styles.heatMapLegendColor, { backgroundColor: "#EF4444" }]} />
+              <Text style={styles.heatMapLegendText}>Hard</Text>
+            </View>
+          </View>
+          
+          {heatmapTopics.length > 0 ? (
+            <View style={styles.heatMapContent}>
+              <View style={styles.heatMapLabels}>
+                <Text style={styles.heatMapAxisLabel}>Time (seconds)</Text>
+                <Text style={styles.heatMapAxisLabel}>Difficulty</Text>
+              </View>
+              
+              {heatmapTopics.map((topic, index) => (
+                <View key={index} style={styles.heatMapRow}>
+                  <Text style={styles.heatMapTopicName} numberOfLines={1} ellipsizeMode="tail">
+                    {topic.entity_name}
+                  </Text>
+                  
+                  <View style={styles.heatMapCellContainer}>
+                    <View 
+                      style={[
+                        styles.heatMapCell,
+                        { backgroundColor: getHeatColor(topic.avg_time_sec, topic.avg_difficulty) }
+                      ]}
+                    />
+                    
+                    <View style={styles.heatMapCellValues}>
+                      <Text style={styles.heatMapCellValue}>{Math.round(topic.avg_time_sec)}s</Text>
+                      <Text style={styles.heatMapCellValue}>{topic.avg_difficulty.toFixed(1)}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noDataContainer}>
+              <AlertCircle size={24} color="#9CA3AF" />
+              <Text style={styles.noDataText}>No topic data available for this period</Text>
+            </View>
+          )}
+        </View>
+      </Animated.View>
+    );
+  };
+
+  // Render the readiness tab
+  const renderReadinessTab = () => {
+    // Animation values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+    
+    useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    return (
+      <Animated.View 
+        style={[
+          styles.tabContent, 
+          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+        ]}
+      >
+        {/* Readiness Overview Card */}
+        <View style={styles.readinessOverviewCard}>
+          <View style={styles.readinessHeader}>
+            <Brain size={20} color="#4F46E5" />
+            <Text style={styles.readinessTitle}>Exam Readiness Overview</Text>
+          </View>
+          
+          <Text style={styles.readinessDescription}>
+            Your exam readiness score is calculated based on your performance across all topics,
+            weighted by their importance for your selected exam.
+          </Text>
+        </View>
+        
+        {/* Readiness Meter or Empty State */}
+        {readinessData.isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4F46E5" />
+            <Text style={styles.loadingText}>Loading readiness data...</Text>
+          </View>
+        ) : readinessData.readinessScore > 0 ? (
+          <ReadinessMeter 
+            readinessScore={readinessData.readinessScore} 
+            onPress={handleOpenReadinessDetails}
+          />
+        ) : (
+          <ReadinessEmptyState onStartPractice={handleStartPractice} />
+        )}
+        
+        {/* Tips and Recommendations */}
+        <View style={styles.tipsCard}>
+          <View style={styles.tipsHeader}>
+            <Info size={20} color="#4F46E5" />
+            <Text style={styles.tipsTitle}>Tips to Improve Readiness</Text>
+          </View>
+          
+          <View style={styles.tipItem}>
+            <View style={[styles.tipIcon, { backgroundColor: '#EEF2FF' }]}>
+              <Repeat size={16} color="#4F46E5" />
+            </View>
+            <View style={styles.tipContent}>
+              <Text style={styles.tipTitle}>Regular Practice</Text>
+              <Text style={styles.tipDescription}>
+                Practice consistently to maintain and improve your mastery levels.
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.tipItem}>
+            <View style={[styles.tipIcon, { backgroundColor: '#ECFDF5' }]}>
+              <Sword size={16} color="#10B981" />
+            </View>
+            <View style={styles.tipContent}>
+              <Text style={styles.tipTitle}>Focus on Weak Areas</Text>
+              <Text style={styles.tipDescription}>
+                Use the "Refine" mode to target topics where your mastery is low.
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.tipItem}>
+            <View style={[styles.tipIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Target size={16} color="#F59E0B" />
+            </View>
+            <View style={styles.tipContent}>
+              <Text style={styles.tipTitle}>Set Achievable Goals</Text>
+              <Text style={styles.tipDescription}>
+                Aim to increase your readiness score by 5-10 points each week.
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Readiness Details Modal */}
+        <ReadinessDetailsModal 
+          visible={readinessModalVisible}
+          onClose={handleCloseReadinessDetails}
+          readinessScore={readinessData.readinessScore}
+          weakestSubjects={readinessData.weakestSubjects}
+          weakestTopics={readinessData.weakestTopics}
+        />
+      </Animated.View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -850,69 +1448,54 @@ export default function ReportsScreen() {
         <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
           <ArrowLeft size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Performance Reports</Text>
-        <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>Analytics & Reports</Text>
       </View>
 
-      {/* Tab Navigation - Simplified */}
-      <View style={styles.tabBar}>
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
         <TouchableOpacity
+          style={[styles.tab, activeTab === "daily" && styles.activeTab]}
           onPress={() => setActiveTab("daily")}
-          style={[
-            styles.tabButton,
-            activeTab === "daily" && styles.activeTabButton
-          ]}
         >
-          <Text
-            style={[
-              styles.tabButtonText,
-              activeTab === "daily" && styles.activeTabButtonText
-            ]}
-          >
-            Daily
-          </Text>
+          <Text style={[styles.tabText, activeTab === "daily" && styles.activeTabText]}>Daily</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
+          style={[styles.tab, activeTab === "weekly" && styles.activeTab]}
           onPress={() => setActiveTab("weekly")}
-          style={[
-            styles.tabButton,
-            activeTab === "weekly" && styles.activeTabButton
-          ]}
         >
-          <Text
-            style={[
-              styles.tabButtonText,
-              activeTab === "weekly" && styles.activeTabButtonText
-            ]}
-          >
-            Weekly
-          </Text>
+          <Text style={[styles.tabText, activeTab === "weekly" && styles.activeTabText]}>Weekly</Text>
         </TouchableOpacity>
         
         <TouchableOpacity
+          style={[styles.tab, activeTab === "monthly" && styles.activeTab]}
           onPress={() => setActiveTab("monthly")}
-          style={[
-            styles.tabButton,
-            activeTab === "monthly" && styles.activeTabButton
-          ]}
         >
-          <Text
-            style={[
-              styles.tabButtonText,
-              activeTab === "monthly" && styles.activeTabButtonText
-            ]}
-          >
-            Monthly
-          </Text>
+          <Text style={[styles.tabText, activeTab === "monthly" && styles.activeTabText]}>Monthly</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "performance" && styles.activeTab]}
+          onPress={() => setActiveTab("performance")}
+        >
+          <Text style={[styles.tabText, activeTab === "performance" && styles.activeTabText]}>Performance</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.tab, activeTab === "readiness" && styles.activeTab]}
+          onPress={() => setActiveTab("readiness")}
+        >
+          <Text style={[styles.tabText, activeTab === "readiness" && styles.activeTabText]}>Readiness</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Content */}
-      <ScrollView style={styles.scrollView}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {activeTab === "daily" && renderDailyReport()}
         {activeTab === "weekly" && renderWeeklyReport()}
         {activeTab === "monthly" && renderMonthlyReport()}
+        {activeTab === "performance" && renderPerformanceTab()}
+        {activeTab === "readiness" && renderReadinessTab()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -1915,5 +2498,369 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFF",
     marginRight: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    minHeight: 300,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  periodSelectorContainer: {
+    marginBottom: 16,
+    position: 'relative',
+    zIndex: 10,
+  },
+  periodSelectorLabel: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 8,
+  },
+  periodSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    padding: 12,
+  },
+  periodSelectorButtonText: {
+    fontSize: 14,
+    color: "#1F2937",
+    fontWeight: "500",
+  },
+  periodDropdown: {
+    position: 'absolute',
+    top: 74,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
+    zIndex: 20,
+  },
+  periodOption: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  periodOptionText: {
+    fontSize: 14,
+    color: "#4B5563",
+  },
+  periodOptionSelected: {
+    color: "#4F46E5",
+    fontWeight: "600",
+  },
+  performanceOverviewCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  performanceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  performanceTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  performanceStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  performanceStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  barChartCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  barChartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  barChartTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  barChartContent: {
+    marginTop: 8,
+  },
+  barChartRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  barChartLabel: {
+    width: 100,
+    fontSize: 12,
+    color: "#4B5563",
+    marginRight: 8,
+  },
+  barChartBarContainer: {
+    flex: 1,
+    height: 24,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 4,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  barChartBar: {
+    height: '100%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    borderRadius: 4,
+  },
+  barChartValue: {
+    position: 'absolute',
+    right: 8,
+    top: 4,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#FFFFFF",
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  noDataText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: 'center',
+  },
+  heatMapCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  heatMapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  heatMapTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginLeft: 8,
+  },
+  heatMapLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  heatMapLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+    marginBottom: 8,
+  },
+  heatMapLegendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
+    marginRight: 4,
+  },
+  heatMapLegendText: {
+    fontSize: 10,
+    color: "#6B7280",
+  },
+  heatMapContent: {
+    marginTop: 8,
+  },
+  heatMapLabels: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 8,
+    paddingRight: 12,
+  },
+  heatMapAxisLabel: {
+    fontSize: 10,
+    color: "#9CA3AF",
+    marginLeft: 16,
+    width: 60,
+    textAlign: 'center',
+  },
+  heatMapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  heatMapTopicName: {
+    width: '40%',
+    fontSize: 12,
+    color: "#4B5563",
+    marginRight: 8,
+  },
+  heatMapCellContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heatMapCell: {
+    width: 40,
+    height: 24,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  heatMapCellValues: {
+    flexDirection: 'row',
+  },
+  heatMapCellValue: {
+    width: 60,
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: 'center',
+  },
+  tabsContainer: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#4F46E5",
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  activeTabText: {
+    color: "#4F46E5",
+  },
+  // Readiness tab styles
+  readinessOverviewCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  readinessHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  readinessTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginLeft: 8,
+  },
+  readinessDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  tipsCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tipsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  tipsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginLeft: 8,
+  },
+  tipItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  tipIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  tipContent: {
+    flex: 1,
+  },
+  tipTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  tipDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
   },
 });
