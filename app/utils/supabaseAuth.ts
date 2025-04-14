@@ -6,11 +6,20 @@ import * as SecureStore from 'expo-secure-store';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+// Add a client cache to avoid recreating clients for the same token
+const clientCache = new Map();
+
 /**
  * Creates a Supabase client with the user's JWT token from Clerk
  * This allows the RLS policies to work correctly
  */
 export const getSupabaseWithAuth = async (clerkToken: string) => {
+  // Return cached client if it exists for this token
+  if (clientCache.has(clerkToken)) {
+    console.log('Using cached Supabase client');
+    return clientCache.get(clerkToken);
+  }
+  
   console.log('Creating Supabase client with auth token');
   
   // Create a storage adapter for Supabase using Expo's SecureStore
@@ -27,8 +36,7 @@ export const getSupabaseWithAuth = async (clerkToken: string) => {
   };
 
   // Create a new Supabase client with the auth token in global headers
-  // This is more reliable than using Authorization header directly
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
         Authorization: `Bearer ${clerkToken}`,
@@ -41,6 +49,17 @@ export const getSupabaseWithAuth = async (clerkToken: string) => {
       detectSessionInUrl: false,
     },
   });
+  
+  // Cache the client for future use with this token
+  clientCache.set(clerkToken, client);
+  
+  // Limit cache size to prevent memory leaks (e.g., keep only the last 5 clients)
+  if (clientCache.size > 5) {
+    const oldestKey = clientCache.keys().next().value;
+    clientCache.delete(oldestKey);
+  }
+  
+  return client;
 };
 
 /**

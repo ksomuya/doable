@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -41,37 +41,66 @@ interface StudyProgressSelectionProps {
 const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onComplete }) => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [filteredSubjects, setFilteredSubjects] = useState<Subject[]>([]);
+  const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
-  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [showAllChapters, setShowAllChapters] = useState(false);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
+  
   const { user } = useUser();
   const { getToken } = useAuth();
-
-  // Fetch user's onboarding data first
+  
+  // Add refs to track initialization state and store the authenticated client
+  const dataFetchedRef = useRef(false);
+  const supabaseClientRef = useRef<any>(null);
+  
   useEffect(() => {
-    fetchOnboardingData();
-  }, []);
+    // Prevent multiple fetches on re-renders
+    if (dataFetchedRef.current) return;
+    
+    const initializeData = async () => {
+      if (!user) return;
+      dataFetchedRef.current = true;
 
-  // Fetch subjects and chapters after we have onboarding data
+      try {
+        // Get token and create authenticated client once
+        const token = await getToken({ template: "supabase" });
+        if (!token) {
+          console.error('Could not get authentication token');
+          setLoading(false);
+          return;
+        }
+        
+        // Store the client for reuse
+        supabaseClientRef.current = await getSupabaseWithAuth(token);
+        
+        // Fetch onboarding data
+        const onboardingResult = await fetchOnboardingData();
+        if (onboardingResult) {
+          await fetchSubjectsAndChapters();
+        }
+      } catch (error) {
+        console.error('Error initializing data:', error);
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, [user]);
+
+  // No dependency on onboardingData anymore - we'll call this internally
   useEffect(() => {
     if (onboardingData) {
-      fetchSubjectsAndChapters();
+      filterChaptersByClass(subjects);
     }
-  }, [onboardingData]);
+  }, [onboardingData, subjects, showAllChapters]);
 
   const fetchOnboardingData = async () => {
-    if (!user) return;
+    if (!user || !supabaseClientRef.current) return false;
 
     try {
-      const token = await getToken({ template: "supabase" });
-      if (!token) {
-        console.error('Could not get authentication token');
-        return;
-      }
-
-      const supabaseWithAuth = await getSupabaseWithAuth(token);
+      // Use the stored client
+      const supabaseWithAuth = supabaseClientRef.current;
       
       // Get user's onboarding data
       const { data, error } = await supabaseWithAuth
@@ -82,7 +111,7 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
 
       if (error) {
         console.error('Error fetching onboarding data:', error);
-        return;
+        return false;
       }
 
       if (data) {
@@ -96,14 +125,19 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
         if (data.preparation_level === 'Advanced') {
           setShowAllChapters(true);
         }
+        
+        return true;
       }
+      
+      return false;
     } catch (error) {
       console.error('Error in fetchOnboardingData:', error);
+      return false;
     }
   };
 
   const fetchSubjectsAndChapters = async () => {
-    if (!onboardingData) return;
+    if (!onboardingData || !supabaseClientRef.current) return;
 
     try {
       setLoading(true);
@@ -117,6 +151,7 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
 
       if (subjectsError) {
         console.error('Error fetching subjects:', subjectsError);
+        setLoading(false);
         return;
       }
 
@@ -130,6 +165,7 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
 
       if (chaptersError) {
         console.error('Error fetching chapters:', chaptersError);
+        setLoading(false);
         return;
       }
 
@@ -138,17 +174,15 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
       
       if (user) {
         try {
-          const token = await getToken({ template: "supabase" });
-          if (token) {
-            const supabaseWithAuth = await getSupabaseWithAuth(token);
-            const { data: userChapters, error: userChaptersError } = await supabaseWithAuth
-              .from('user_studied_chapters')
-              .select('chapter_id')
-              .eq('user_id', user.id);
+          // Use the stored authenticated client
+          const supabaseWithAuth = supabaseClientRef.current;
+          const { data: userChapters, error: userChaptersError } = await supabaseWithAuth
+            .from('user_studied_chapters')
+            .select('chapter_id')
+            .eq('user_id', user.id);
               
-            if (!userChaptersError && userChapters) {
-              studiedChapters = userChapters.map(item => item.chapter_id);
-            }
+          if (!userChaptersError && userChapters) {
+            studiedChapters = userChapters.map(item => item.chapter_id);
           }
         } catch (err) {
           console.error('Error fetching user studied chapters:', err);
@@ -302,15 +336,17 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
 
       console.log('Selected chapter IDs:', selectedChapterIds);
       
-      // Get authentication token
-      const token = await getToken({ template: "supabase" });
-      
-      if (!token) {
-        throw new Error('Could not get authentication token');
+      // Check if we have a stored client, if not, create one
+      if (!supabaseClientRef.current) {
+        const token = await getToken({ template: "supabase" });
+        if (!token) {
+          throw new Error('Could not get authentication token');
+        }
+        supabaseClientRef.current = await getSupabaseWithAuth(token);
       }
       
-      // Create authenticated Supabase client
-      const supabaseWithAuth = await getSupabaseWithAuth(token);
+      // Use the stored authenticated client
+      const supabaseWithAuth = supabaseClientRef.current;
       
       console.log('Deleting existing user studied chapters');
       
@@ -323,7 +359,7 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
       if (deleteError) {
         console.error('Error deleting existing records:', deleteError);
         Alert.alert('Error', 'Failed to update your study progress');
-        return;
+        return false;
       }
       
       console.log('Existing entries deleted successfully');

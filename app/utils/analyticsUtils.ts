@@ -153,23 +153,38 @@ export const updateTopicMastery = async (
 /**
  * Triggers an update of the user's analytics reports
  * This can be called periodically to ensure reports are up-to-date
- * @param userId User ID 
+ * @param userId User ID (not directly passed to RPC but used for logging)
  * @returns Promise indicating success
  */
-export const updateUserReports = async (userId: string): Promise<boolean> => {
+export const updateUserReports = async (userId: string, token?: string): Promise<boolean> => {
   try {
-    // Trigger stored procedure to update reports
-    const { data, error } = await supabase
-      .rpc('update_all_reports');
+    // Use the authenticated client if token is provided
+    // This ensures auth.uid() will return the correct user in the stored procedure
+    let client;
+    try {
+      console.log('Setting up authenticated client for reports update');
+      client = token ? await getSupabaseWithAuth(token) : supabase;
+    } catch (tokenError) {
+      console.error('Error setting up authenticated client:', tokenError);
+      client = supabase;
+    }
+    
+    console.log('Calling update_all_reports RPC');
+    
+    // Call update_all_reports without parameters - it uses auth.uid() internally
+    const { data, error } = await client.rpc('update_all_reports');
 
     if (error) {
       console.error('Error updating user reports:', error);
+      // Don't throw the error, just return false to prevent cascading errors
       return false;
     }
 
+    console.log('Successfully updated reports for user:', userId);
     return true;
   } catch (error) {
     console.error('Exception updating user reports:', error);
+    // Returning false instead of throwing to prevent cascading errors
     return false;
   }
 };
