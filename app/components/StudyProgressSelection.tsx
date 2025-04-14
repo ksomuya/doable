@@ -159,6 +159,14 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
       const isClass12 = onboardingData.current_class === 'Class 12';
       const isTopper = onboardingData.preparation_level === 'Advanced';
 
+      // Define default colors for subjects
+      const subjectColors: Record<string, string> = {
+        'Physics': '#4F46E5', // blue
+        'Chemistry': '#10B981', // green 
+        'Biology': '#F97316', // orange
+        'Mathematics': '#8B5CF6', // purple
+      };
+
       // Structure data with subjects containing their chapters
       const formattedSubjects = subjectsData.map(subject => {
         const subjectChapters = chaptersData
@@ -179,7 +187,7 @@ const StudyProgressSelection: React.FC<StudyProgressSelectionProps> = ({ onCompl
         return {
           id: subject.id,
           name: subject.name,
-          color: subject.color || '#333333',
+          color: subjectColors[subject.name] || '#333333', // Use default color mapping instead of database value
           exam_type: subject.exam_type || [],
           chapters: subjectChapters
         };

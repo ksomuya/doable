@@ -5,7 +5,7 @@ import { useUser } from '@clerk/clerk-expo';
 // Define interface for the subject from a query result
 interface SubjectData {
   name: string;
-  color: string;
+  color: string; // Add color back since we're assigning it dynamically
 }
 
 // Define interface for the chapter with isStudied flag
@@ -45,11 +45,16 @@ export const markClassChaptersAsStudied = async (
     // Use authenticated client if token is provided
     const client = authToken ? await getSupabaseWithAuth(authToken) : supabase;
     
-    // First get subjects IDs based on exam type
-    const { data: subjectsData, error: subjectError } = await client
-      .from('subjects')
-      .select('id')
-      .contains('exam_type', [examType]);
+    // First get subjects IDs based on exam type using the correct boolean columns
+    const subjectsQuery = client.from('subjects').select('id');
+    
+    if (examType === 'JEE') {
+      subjectsQuery.eq('jee_mains', true);
+    } else if (examType === 'NEET') {
+      subjectsQuery.eq('neet', true);
+    }
+    
+    const { data: subjectsData, error: subjectError } = await subjectsQuery;
       
     if (subjectError) throw subjectError;
     if (!subjectsData || subjectsData.length === 0) return false;
@@ -180,19 +185,34 @@ export const fetchUserChapters = async (
     const studiedChapterIds = studiedChapters 
       ? studiedChapters.map(sc => sc.chapter_id) 
       : [];
-      
-    // First get subjects that match the exam type
-    const { data: subjectsData } = await client
-      .from('subjects')
-      .select('id')
-      .contains('exam_type', [examType]);
+    
+    // Get subjects based on exam type using the correct boolean columns
+    const subjectsQuery = client.from('subjects').select('id');
+    
+    if (examType === 'JEE') {
+      subjectsQuery.eq('jee_mains', true);
+    } else if (examType === 'NEET') {
+      subjectsQuery.eq('neet', true);
+    }
+    
+    const { data: subjectsData, error: subjectsError } = await subjectsQuery;
+    
+    if (subjectsError) {
+      console.error('Error fetching subjects:', subjectsError);
+      return { chapters: [], studiedCount: 0 };
+    }
       
     const subjectIds = subjectsData ? subjectsData.map(s => s.id) : [];
+    
+    if (subjectIds.length === 0) {
+      console.error('No subjects found for exam type:', examType);
+      return { chapters: [], studiedCount: 0 };
+    }
     
     // Adjust SQL query complexity based on preparation level
     const chaptersQuery = client
       .from('chapters')
-      .select('id, name, class_level, subject_id, subjects(name, color), topics(id, name)');
+      .select('id, name, class_level, subject_id, subjects(id, name), topics(id, name)');
     
     if (userClass === 'Class 11' && examType !== 'NEET') {
       // For Class 11 JEE students, filter out Biology chapters
@@ -223,13 +243,21 @@ export const fetchUserChapters = async (
     const studiedTopicIds = studiedTopics 
       ? studiedTopics.map(st => st.topic_id) 
       : [];
-      
+    
     // Process chapters data for UI
     const chapters: Chapter[] = [];
     
     if (fetchedChapters) {
       for (const chapter of fetchedChapters) {
         if (chapter && chapter.id) {
+          // Define subject colors
+          const subjectColors: Record<string, string> = {
+            'Physics': '#4F46E5', // blue
+            'Chemistry': '#10B981', // green 
+            'Biology': '#F97316', // orange
+            'Mathematics': '#8B5CF6', // purple
+          };
+          
           // Extract the subject data correctly
           let subjectData: SubjectData | undefined = undefined;
           
@@ -238,19 +266,21 @@ export const fetchUserChapters = async (
             if (Array.isArray(chapter.subjects)) {
               if (chapter.subjects.length > 0 && chapter.subjects[0]) {
                 const firstSubject = chapter.subjects[0] as any;
-                if (firstSubject.name && firstSubject.color) {
+                if (firstSubject.name) {
+                  const color = subjectColors[firstSubject.name] || '#6B7280'; // Default to gray
                   subjectData = {
                     name: firstSubject.name,
-                    color: firstSubject.color
+                    color: color
                   };
                 }
               }
             } else if (typeof chapter.subjects === 'object' && chapter.subjects !== null) {
               const subjectObj = chapter.subjects as any;
-              if (subjectObj.name && subjectObj.color) {
+              if (subjectObj.name) {
+                const color = subjectColors[subjectObj.name] || '#6B7280'; // Default to gray
                 subjectData = {
                   name: subjectObj.name,
-                  color: subjectObj.color
+                  color: color
                 };
               }
             }
@@ -309,33 +339,27 @@ export const updateChapterStudyStatus = async (
     // Use authenticated client if token is provided
     const client = authToken ? await getSupabaseWithAuth(authToken) : supabase;
     
-    if (studied) {
-      // Mark as studied
-      const { error } = await client
-        .from('user_studied_topics')
-        .insert({
-          user_id: userId,
-          chapter_id: chapterId,
-          study_date: new Date().toISOString().split('T')[0],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-    } else {
-      // Mark as not studied
-      const { error } = await client
-        .from('user_studied_topics')
-        .delete()
-        .match({ 
-          user_id: userId, 
-          chapter_id: chapterId
-        })
-        .is('topic_id', null);
-      
-      if (error) throw error;
+    console.log('Updating chapter study status:', {
+      userId: userId,
+      chapterId: chapterId,
+      studied: studied,
+      userIdType: typeof userId,
+      chapterIdType: typeof chapterId
+    });
+    
+    // Direct RPC call - no fallback to reduce multiple API calls
+    const { data, error } = await client.rpc('update_chapter_study_status', {
+      p_user_id: userId,
+      p_chapter_id: chapterId,
+      p_studied: studied
+    });
+    
+    if (error) {
+      console.error('RPC error:', error);
+      return { success: false };
     }
     
+    console.log('RPC success:', data);
     return { success: true };
   } catch (error) {
     console.error('Error updating chapter study status:', error);
@@ -365,35 +389,38 @@ export const updateTopicStudyStatus = async (
     // Use authenticated client if token is provided
     const client = authToken ? await getSupabaseWithAuth(authToken) : supabase;
     
-    if (studied) {
-      // Mark as studied
-      const { error } = await client
-        .from('user_studied_topics')
-        .insert({
-          user_id: userId,
-          chapter_id: chapterId,
-          topic_id: topicId,
-          topic_name: topicName,
-          study_date: new Date().toISOString().split('T')[0],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-    } else {
-      // Mark as not studied
-      const { error } = await client
-        .from('user_studied_topics')
-        .delete()
-        .match({ 
-          user_id: userId, 
-          chapter_id: chapterId,
-          topic_id: topicId
-        });
-      
-      if (error) throw error;
+    console.log('Updating topic study status:', {
+      userId: userId,
+      chapterId: chapterId,
+      topicId: topicId,
+      topicName: topicName,
+      studied: studied,
+      userIdType: typeof userId,
+      chapterIdType: typeof chapterId,
+      topicIdType: typeof topicId
+    });
+    
+    // Use RPC call for consistent behavior
+    const { data, error } = await client.rpc('update_topic_study_status', {
+      p_user_id: userId,
+      p_chapter_id: chapterId,
+      p_topic_id: topicId,
+      p_topic_name: topicName,
+      p_studied: studied
+    });
+    
+    if (error) {
+      console.error('RPC error:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        hint: error.hint,
+        details: error.details
+      });
+      return { success: false };
     }
     
+    console.log('RPC success:', data);
     return { success: true };
   } catch (error) {
     console.error('Error updating topic study status:', error);

@@ -11,6 +11,8 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
  * This allows the RLS policies to work correctly
  */
 export const getSupabaseWithAuth = async (clerkToken: string) => {
+  console.log('Creating Supabase client with auth token');
+  
   // Create a storage adapter for Supabase using Expo's SecureStore
   const ExpoSecureStoreAdapter = {
     getItem: (key: string) => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, { FadeInRight, FadeOutLeft } from "react-native-reanimated";
+import { useAppContext } from "../context/AppContext";
 
 const { width } = Dimensions.get("window");
 
@@ -25,16 +26,61 @@ interface OnboardingSurveyProps {
   onComplete?: (surveyData: SurveyData) => void;
 }
 
-const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [surveyData, setSurveyData] = useState<SurveyData>({
-    examType: null,
-    currentClass: null,
-    preparationLevel: null,
-    studyPreferences: [],
-    dailyStudyTime: null,
-  });
+const defaultSurveyData: SurveyData = {
+  examType: null,
+  currentClass: null,
+  preparationLevel: null,
+  studyPreferences: [],
+  dailyStudyTime: null,
+};
 
+const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
+  const { partialSurveyData, surveyCurrStep, updateSurveyProgress } = useAppContext();
+  
+  // Ensure we have valid initial values
+  const initialStep = surveyCurrStep ?? 0;
+  
+  const [currentStep, setCurrentStep] = useState(initialStep);
+  const [surveyData, setSurveyData] = useState<SurveyData>(() => {
+    // Safely merge partial data with default values
+    // Using a more defensive approach to handle potential null/undefined values
+    const safePartialData = partialSurveyData || {};
+    
+    return {
+      ...defaultSurveyData,
+      examType: safePartialData.examType || null,
+      currentClass: safePartialData.currentClass || null,
+      preparationLevel: safePartialData.preparationLevel || null,
+      studyPreferences: Array.isArray(safePartialData.studyPreferences) 
+        ? safePartialData.studyPreferences 
+        : [],
+      dailyStudyTime: safePartialData.dailyStudyTime || null,
+    };
+  });
+  
+  // Use refs to track previous values to prevent infinite updates
+  const prevStepRef = useRef(currentStep);
+  const prevDataRef = useRef(surveyData);
+
+  // Update context when survey data changes
+  useEffect(() => {
+    // Only update if there's an actual change in data or step
+    const stepChanged = prevStepRef.current !== currentStep;
+    const dataChanged = JSON.stringify(prevDataRef.current) !== JSON.stringify(surveyData);
+    
+    if (stepChanged || dataChanged) {
+      prevStepRef.current = currentStep;
+      prevDataRef.current = surveyData;
+      
+      // Ensure this only runs if updateSurveyProgress is available
+      if (updateSurveyProgress) {
+        console.log("Updating survey progress", { currentStep, surveyData });
+        updateSurveyProgress(currentStep, surveyData);
+      }
+    }
+  }, [currentStep, surveyData, updateSurveyProgress]);
+
+  // Make sure we have valid steps to display
   const steps = [
     {
       title: "Which exam are you preparing for?",
@@ -81,6 +127,14 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
     },
   ];
 
+  // Check if we have a valid step
+  useEffect(() => {
+    // Ensure currentStep is always within valid range
+    if (currentStep < 0 || currentStep >= steps.length) {
+      setCurrentStep(0);
+    }
+  }, [currentStep, steps.length]);
+
   const handleOptionSelect = (option: string) => {
     const currentField = steps[currentStep].field;
     const isSingleSelect = steps[currentStep].singleSelect;
@@ -92,9 +146,9 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
       });
     } else {
       const maxSelections = steps[currentStep].maxSelections || 1;
-      const currentSelections = [
-        ...surveyData[currentField as keyof SurveyData],
-      ] as string[];
+      const currentSelections = currentField === 'studyPreferences' 
+        ? [...(surveyData.studyPreferences || [])] 
+        : [];
 
       if (currentSelections.includes(option)) {
         setSurveyData({
@@ -143,6 +197,11 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
       setCurrentStep(currentStep - 1);
     }
   };
+
+  // Ensure we have a valid step before rendering
+  if (currentStep < 0 || currentStep >= steps.length) {
+    return null;
+  }
 
   const currentStepData = steps[currentStep];
 

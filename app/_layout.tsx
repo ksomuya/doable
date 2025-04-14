@@ -1,15 +1,15 @@
 import { useEffect } from "react";
-import { Slot, Stack, SplashScreen } from "expo-router";
+import { SplashScreen } from "expo-router";
 import * as SplashScreenModule from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { AppProvider } from "./context/AppContext";
 import { ClerkProvider } from "@clerk/clerk-expo";
 import { StatusBar } from "expo-status-bar";
 import { Platform } from "react-native";
-import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import ClerkSupabaseSync from "./components/ClerkSupabaseSync";
 import * as SecureStore from "expo-secure-store";
 import "../global.css";
+import { Stack } from "expo-router";
 
 // Keep the splash screen visible until we're ready
 SplashScreenModule.preventAutoHideAsync();
@@ -65,24 +65,13 @@ export default function RootLayout() {
     >
       <AppProvider>
         <ClerkSupabaseSync />
-        <ThemeProvider
-          value={{
-            ...DefaultTheme,
-            colors: {
-              ...DefaultTheme.colors,
-              background: "#fff",
-            },
+        <StatusBar style={Platform.OS === 'ios' ? 'dark' : 'light'} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "#fff" },
           }}
-        >
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: "#fff" },
-            }}
-          />
-          <StatusBar style={Platform.OS === 'ios' ? 'dark' : 'light'} />
-        </ThemeProvider>
-        <Slot />
+        />
       </AppProvider>
     </ClerkProvider>
   );

@@ -1,0 +1,376 @@
+
+# Doable - Application Structure and User Flows
+
+## 1. Application Overview
+
+Doable is an educational platform designed for students preparing for competitive exams like JEE (Main & Advanced) and NEET. The application focuses on personalized learning with adaptive content, spaced repetition, and comprehensive progress tracking.
+
+## 2. User Registration and Onboarding
+
+### New User Registration
+1. **Sign Up Screen**
+   - Email registration or social login
+   - Basic information collection (name, email)
+   - Terms of service acceptance
+
+2. **Onboarding Survey**
+   - Data collected: 
+     - Exam type (JEE Mains, JEE Advanced, NEET)
+     - Current class/grade
+     - Preparation level (Beginner, Intermediate, Advanced)
+     - Daily study time availability
+   - Stored in `onboarding_surveys` table
+   - User flag `is_onboarded` set to true in `users` table
+
+3. **Profile Setup**
+   - Optional profile photo upload (stored in storage.objects)
+   - Additional details (date of birth, parent's mobile)
+   - User flag `is_profile_setup` set to true in `users` table
+
+### Returning User Login
+1. **Login Screen**
+   - Email/password authentication
+   - Social login options
+   - Password recovery option
+   - Session management via `auth.sessions` table
+
+## 3. Main Screens and Features
+
+### Home Screen
+- **Dashboard Overview**
+  - Daily study streak counter from `user_streaks`
+  - Daily goals and progress
+  - Recommended questions based on `dim_spaced_repetition_queue`
+  - Recent activity summary
+
+- **Quick Actions**
+  - Continue where left off
+  - Start new topic
+  - Practice questions
+  - View progress reports
+
+### Subject Explorer
+- **Subject Selection**
+  - List of subjects from `subjects` table filtered by exam type
+  - Progress indicators for each subject
+
+- **Chapter View**
+  - Chapters within selected subject from `chapters` table
+  - Progress indicators based on `user_studied_chapters`
+  - Difficulty indicators
+
+- **Topic View**
+  - Topics within selected chapter from `topics` table
+  - Progress based on `user_studied_topics`
+  - Difficulty level (Easy, Medium, Hard)
+  - Estimated practice time
+  - Importance indicators
+
+### Study Screen
+- **Topic Content**
+  - Topic description and learning outcomes
+  - Prerequisite topics with links
+  - Study status tracking via `user_studied_topics`
+  
+- **Subtopics List**
+  - Detailed subtopics from `subtopics` table
+  - Mastery indicators from `dim_topic_mastery`
+
+### Practice Mode
+- **Question Interface**
+  - Questions pulled from `questions` table
+  - Multiple choice options display
+  - Timer for question attempts
+  - Confidence level selection
+
+- **Solution View**
+  - Correct answer display
+  - Detailed solution explanation
+  - Step-by-step breakdowns for complex problems
+  - Formula visualizations via Desmos
+
+- **Progress Tracking**
+  - Records attempts in `evt_question_attempts`
+  - Updates mastery levels in `dim_topic_mastery`
+  - Schedules future review in spaced repetition queue
+
+### Reports and Analytics
+- **Daily Overview**
+  - Study time metrics from `rep_daily_overview`
+  - Topics and chapters completed
+  - Accuracy percentages
+  - Streak information
+
+- **Weekly/Monthly Reports**
+  - Aggregated study data from `rep_weekly_overview` and `rep_monthly_overview`
+  - Subject-wise progress visualization
+  - Accuracy trends by subject
+  - Weak topics identification
+
+- **Exam Readiness**
+  - Overall readiness score from `rep_exam_readiness`
+  - Subject-wise preparation status
+  - Predicted score ranges
+  - Recommended focus areas
+
+## 4. User Flows
+
+### Daily Study Flow
+1. User logs in (recorded in `evt_daily_logins`)
+2. Views recommended questions on home screen
+3. Selects topic/chapter to study or practice
+4. Completes study session (recorded in `evt_study_sessions`)
+5. Answers practice questions (recorded in `evt_question_attempts`)
+6. Views performance summary
+7. Updates streak and XP in `user_profiles`
+
+### Spaced Repetition Flow
+1. User completes initial question attempts
+2. System calculates mastery level via `fn_update_mastery`
+3. Based on performance, questions are scheduled for future review
+4. Review dates calculated using `fn_calculate_next_review`
+5. Questions appear in user's queue when due for review
+6. Repeat mastery assessments adjust spacing intervals
+
+### Exam Preparation Flow
+1. User selects exam type in profile/preferences
+2. System filters relevant subjects and chapters
+3. User follows guided study path through topics
+4. Regular practice sessions build mastery
+5. Weekly/monthly progress reviews highlight weak areas
+6. Exam readiness indicators show overall preparation status
+7. Final preparation focuses on identified weak topics
+
+## 5. Data Storage and Retrieval
+
+### Client-Side Storage
+- Authentication tokens stored securely
+- Cached content for offline access
+- User preferences for UI customization
+
+### Server Interactions
+- **Login/Authentication**
+  - JWT tokens managed via Supabase Auth
+  - Session refresh via `auth.refresh_tokens`
+
+- **Content Fetching**
+  - Subjects/chapters/topics loaded progressively as needed
+  - Questions pre-fetched in batches for practice sessions
+  - RLS ensures users only access their own data
+
+- **Progress Updates**
+  - Study progress synced after topic completion
+  - Question attempts synchronized immediately
+  - Analytics processed server-side via functions like `update_daily_reports`
+
+- **File Storage**
+  - Profile photos stored in `storage.objects`
+  - Question images accessed via image_url from CDN
+
+## 6. Permissions and Security
+
+### Requested Permissions
+- **Storage Access** - For profile photos and offline content
+- **Notifications** - For streak reminders and study schedules
+- **Internet Access** - For syncing progress and fetching content
+
+### Data Security
+- Row-Level Security (RLS) policies on all user data tables
+- Authentication via Supabase auth with refresh token mechanism
+- User ID as text format for consistent access control
+- Data encryption for sensitive information
+
+## 7. Feature Highlights
+
+### Streaks and Gamification
+- Daily login streaks tracked in `user_streaks`
+- XP points awarded for activities in `user_profiles`
+- Level progression system
+- "Snowballs" as in-app currency/reward
+
+### Adaptive Learning
+- Difficulty adjusts based on performance
+- Spaced repetition optimized for memory retention
+- Focus on weak topics determined by analytics
+- Personalized question recommendations
+
+### Comprehensive Analytics
+- Daily/weekly/monthly progress visualization
+- Subject-wise performance breakdowns
+- Exam readiness predictions
+- Attention threshold tracking to optimize study sessions
+
+## 8. Technical Details
+
+### Client Implementation
+- Mobile-first responsive design
+- Progressive Web App capabilities
+- Offline functionality for core features
+- Real-time synchronization via Supabase Realtime
+
+### Performance Optimizations
+- Batched API calls for data retrieval
+- Cached content for frequently accessed materials
+- Background sync for progress updates
+- Optimized image delivery for questions
+
+This document outlines the key aspects of the Doable application based on the database structure. The actual implementation might vary in specific UI elements and workflows, but this represents a comprehensive picture of the application's functionality and user experience.
+
+
+
+# Doable Project Implementation Status
+
+## Currently Implemented Features
+
+### User Management System
+- ✅ User registration and authentication
+- ✅ User profile creation and management
+- ✅ Onboarding survey collection
+- ✅ Study preferences storage
+
+### Content Structure
+- ✅ Subject organization (JEE/NEET categorization)
+- ✅ Chapter hierarchy within subjects
+- ✅ Topic organization within chapters
+- ✅ Subtopic breakdown within topics
+- ✅ Question database with multiple difficulty levels
+
+### Study Progress Tracking
+- ✅ Chapter and topic completion tracking
+- ✅ User study session logging
+- ✅ Daily login streak system
+- ✅ Progress persistence across sessions
+
+### Practice System
+- ✅ Question serving mechanism
+- ✅ Answer verification and scoring
+- ✅ Solution display functionality
+- ✅ Performance tracking by subject/topic/chapter
+
+### Analytics System
+- ✅ Daily overview reports
+- ✅ Weekly progress summaries
+- ✅ Monthly performance analysis
+- ✅ Topic mastery calculation
+- ✅ Exam readiness assessment
+
+### Learning Algorithms
+- ✅ Spaced repetition implementation
+- ✅ Mastery level calculation
+- ✅ Review scheduling based on performance
+- ✅ Question recommendation system
+
+## Features Requiring Implementation
+
+### 1. Admin Dashboard [less priority]
+**Status**: Missing or incomplete
+**Requirements**:
+- Content management interface for questions/topics
+- User analytics overview
+- Bulk content upload functionality
+- User management tools
+- Performance monitoring system
+- **Technical needs**: Admin-specific frontend views, privileged API endpoints, role-based access control
+
+
+### 4. Offline Mode
+**Status**: Not implemented
+**Requirements**:
+- Content caching system
+- Progress tracking while offline
+- Synchronization when back online
+- Downloadable content packages
+- **Technical needs**: Service workers, local storage implementation, sync resolution logic
+
+### 5. Enhanced Gamification
+**Status**: Partially implemented (streaks only)
+**Requirements**:
+- Achievement system
+- Badges for milestones
+- Daily/weekly challenges
+- Leaderboards and peer comparison
+- Reward system beyond "experience"
+- **Technical needs**: Achievement tracking tables, reward distribution mechanism
+
+<!-- ### 6. Parent updates
+**Status**: Not implemented
+**Requirements**:
+- Parent ac creation
+- Student progress monitoring
+- Study time tracking
+- Performance reports for parents
+- Communication system with tutors
+- **Technical needs**: Parent-specific user role, family linkage in database, specialized reporting views -->
+
+
+### 8. Community Features
+**Status**: Not implemented
+**Requirements**:
+- Discussion forums
+- Doubt clearing system
+- Peer-to-peer help
+- Teacher/expert Q&A
+- Study groups
+- **Technical needs**: Forum database structure, moderation system, notification system
+
+### 9. Payment and Subscription System
+**Status**: Not implemented
+**Requirements**:
+- Subscription plans
+- Payment gateway integration
+- Receipt generation
+- Subscription management
+- Access control based on subscription
+- **Technical needs**: Payment processor integration, subscription tracking tables, invoicing system
+
+### 10. Advanced Analytics Visualization
+**Status**: Partially implemented (data collection present, visualization potentially missing)
+**Requirements**:
+- Interactive data visualizations
+- Custom date range analysis
+- Progress projections
+- Comparative analytics
+- Downloadable reports
+- **Technical needs**: Data visualization library, report generation service
+
+## Technical Debt and Infrastructure Needs
+
+### 1. Comprehensive Testing
+**Status**: Unknown, likely incomplete
+**Requirements**:
+- Unit test coverage for backend functions
+- Integration tests for API endpoints
+- End-to-end testing of user flows
+- Performance benchmarking
+- **Technical needs**: Testing framework setup, CI integration
+
+### 2. Documentation
+**Status**: Incomplete
+**Requirements**:
+- API documentation
+- Code comments and documentation
+- User guides
+- Admin manuals
+- Development onboarding guide
+- **Technical needs**: Documentation system, API documentation generation
+
+### 3. Scalability Improvements
+**Status**: Unknown
+**Requirements**:
+- Database query optimization
+- Caching layer implementation
+- CDN for static assets
+- Load balancing configuration
+- **Technical needs**: Performance monitoring, load testing, infrastructure scaling plan
+
+### 4. Security Enhancements
+**Status**: Basic implementation via RLS
+**Requirements**:
+- Comprehensive security audit
+- Enhanced data encryption
+- GDPR/data privacy compliance
+- Vulnerability scanning
+- **Technical needs**: Security testing tools, compliance documentation
+
+
+Each of these features should be broken down into smaller tasks, estimated, and prioritized based on user impact and technical dependencies.

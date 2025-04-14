@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  ActivityIndicator,
   StyleSheet,
   StatusBar,
 } from "react-native";
@@ -42,17 +41,7 @@ export default function HomeScreen() {
     updateStudiedChapters,
     practiceSession,
   } = useAppContext();
-  const [isLoading, setIsLoading] = useState(true);
   const questionsAnswered = practiceSession?.questionsAnswered || 0;
-
-  useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const handleProfilePress = () => {
     router.push("/profile");
@@ -85,15 +74,6 @@ export default function HomeScreen() {
   const handleChapterSave = (savedChapters: string[]) => {
     updateStudiedChapters(savedChapters);
   };
-
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.accent} />
-        <Text style={styles.loadingText}>Loading your study buddy...</Text>
-      </View>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -228,16 +208,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    color: COLORS.gray,
   },
   topContent: {
     height: "35%",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -22,13 +22,35 @@ import { Alert } from "react-native";
 
 const OnboardingScreen = () => {
   const router = useRouter();
-  const { completeSurvey } = useAppContext();
-  const [currentStep, setCurrentStep] = useState(1); // Start with first intro screen
+  const { completeSurvey, partialSurveyData, surveyCurrStep } = useAppContext();
+  const initialStep = useRef(surveyCurrStep > 0 ? 3 : 1);
+  const [currentStep, setCurrentStep] = useState(initialStep.current); // Start with survey if in progress, otherwise intro
   const [surveyData, setSurveyData] = useState<SurveyData | null>(null);
   const [typingComplete, setTypingComplete] = useState(false);
   const [savingData, setSavingData] = useState(false);
   const { user } = useUser();
   const { getToken } = useAuth();
+
+  // Check if there's partial survey data only once on initial render
+  useEffect(() => {
+    // Only run this effect once on component mount
+    if (partialSurveyData && 
+        surveyCurrStep > 0 && 
+        hasPartialData(partialSurveyData)) {
+      // Ensure we're on the survey step
+      if (currentStep !== 3) {
+        setCurrentStep(3);
+      }
+    }
+  }, []); // Empty dependency array means this only runs once
+
+  // Helper function to check if partial data exists
+  const hasPartialData = (data: SurveyData) => {
+    return Object.values(data).some(value => 
+      value !== null && 
+      (Array.isArray(value) ? value.length > 0 : true)
+    );
+  };
 
   const saveOnboardingSurvey = async (data: SurveyData) => {
     if (!user) {
@@ -174,8 +196,8 @@ const OnboardingScreen = () => {
         }
       }
       
-      // Navigate directly to home page instead of paywall/study progress
-      router.replace("/home" as any);
+      // Navigate to main index page instead of nonexistent home page
+      router.replace("/");
     }
   };
   

@@ -74,6 +74,8 @@ type AppContextType = {
   user: UserData;
   pet: PetData;
   surveyData: SurveyData;
+  partialSurveyData: SurveyData;
+  surveyCurrStep: number;
   practiceSession: PracticeSession;
   practiceProgress: PracticeProgress;
   studiedChapters: string[];
@@ -81,6 +83,8 @@ type AppContextType = {
   signOut: () => void;
   // Onboarding actions
   completeSurvey: (data: SurveyData) => void;
+  updateSurveyProgress: (step: number, data: Partial<SurveyData>) => void;
+  resetSurveyProgress: () => void;
   // Profile actions
   completeProfileSetup: (
     firstName: string,
@@ -192,7 +196,8 @@ const STORAGE_KEYS = {
   SURVEY_DATA: '@doable:survey_data',
   STUDIED_CHAPTERS: '@doable:studied_chapters',
   USER_GOALS: '@doable:user_goals',
-  PRACTICE_PROGRESS: '@doable:practice_progress'
+  PRACTICE_PROGRESS: '@doable:practice_progress',
+  SURVEY_PROGRESS: '@doable:survey_progress'
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -203,6 +208,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<UserData>(defaultUser);
   const [pet, setPet] = useState<PetData>(defaultPet);
   const [surveyData, setSurveyData] = useState<SurveyData>(defaultSurveyData);
+  const [partialSurveyData, setPartialSurveyData] = useState<SurveyData>(defaultSurveyData);
+  const [surveyCurrStep, setSurveyCurrStep] = useState<number>(0);
   const [practiceSession, setPracticeSession] = useState<PracticeSession>(
     defaultPracticeSession,
   );
@@ -216,13 +223,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const loadPersistedData = async () => {
       try {
-        const [userData, petData, surveyData, chaptersData, goalsData, practiceProgressData] = await Promise.all([
+        const [userData, petData, surveyData, chaptersData, goalsData, practiceProgressData, surveyProgressData] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.USER_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.PET_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.SURVEY_DATA),
           AsyncStorage.getItem(STORAGE_KEYS.STUDIED_CHAPTERS),
           AsyncStorage.getItem(STORAGE_KEYS.USER_GOALS),
           AsyncStorage.getItem(STORAGE_KEYS.PRACTICE_PROGRESS),
+          AsyncStorage.getItem(STORAGE_KEYS.SURVEY_PROGRESS),
         ]);
 
         if (userData) setUser({ ...defaultUser, ...JSON.parse(userData) });
@@ -234,6 +242,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
           goals: JSON.parse(goalsData)
         }));
         if (practiceProgressData) setPracticeProgress({ ...defaultPracticeProgress, ...JSON.parse(practiceProgressData) });
+        
+        if (surveyProgressData) {
+          const parsedData = JSON.parse(surveyProgressData);
+          setPartialSurveyData(parsedData.data || defaultSurveyData);
+          setSurveyCurrStep(parsedData.step || 0);
+        }
       } catch (error) {
         console.error('Error loading persisted data:', error);
       } finally {
@@ -313,6 +327,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
+    // Only save if we have chapters to save and the component is mounted
     if (studiedChapters.length > 0) {
       saveStudiedChapters();
     }
@@ -344,6 +359,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     savePracticeProgress();
   }, [practiceProgress]);
 
+  // Save survey progress when it changes
+  useEffect(() => {
+    const saveSurveyProgress = async () => {
+      try {
+        const progressData = {
+          step: surveyCurrStep,
+          data: partialSurveyData
+        };
+        await AsyncStorage.setItem(STORAGE_KEYS.SURVEY_PROGRESS, JSON.stringify(progressData));
+      } catch (error) {
+        console.error('Error saving survey progress:', error);
+      }
+    };
+
+    saveSurveyProgress();
+  }, [surveyCurrStep, partialSurveyData]);
+
   // Clear persisted data on sign out
   const clearPersistedData = async () => {
     try {
@@ -354,6 +386,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         AsyncStorage.removeItem(STORAGE_KEYS.STUDIED_CHAPTERS),
         AsyncStorage.removeItem(STORAGE_KEYS.USER_GOALS),
         AsyncStorage.removeItem(STORAGE_KEYS.PRACTICE_PROGRESS),
+        AsyncStorage.removeItem(STORAGE_KEYS.SURVEY_PROGRESS),
       ]);
     } catch (error) {
       console.error('Error clearing persisted data:', error);
@@ -501,6 +534,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       ...user,
       isOnboarded: true,
     });
+
+    // Clear survey progress when completed
+    resetSurveyProgress();
   };
 
   // Profile setup actions
@@ -767,18 +803,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Chapter actions
   const updateStudiedChapters = (chapters: string[]) => {
-    setStudiedChapters(chapters);
+    // Only update if the chapters array has actually changed
+    // This prevents unnecessary re-renders and state updates
+    if (JSON.stringify(chapters) !== JSON.stringify(studiedChapters)) {
+      setStudiedChapters(chapters);
+    }
+  };
+
+  // Add function to update survey progress
+  const updateSurveyProgress = (step: number, data: Partial<SurveyData>) => {
+    setSurveyCurrStep(step);
+    setPartialSurveyData(prevData => ({
+      ...prevData,
+      ...data
+    }));
+  };
+
+  // Add function to reset survey progress
+  const resetSurveyProgress = () => {
+    setSurveyCurrStep(0);
+    setPartialSurveyData(defaultSurveyData);
+    // Also remove from AsyncStorage
+    AsyncStorage.removeItem(STORAGE_KEYS.SURVEY_PROGRESS).catch(err => 
+      console.error('Error removing survey progress:', err)
+    );
   };
 
   const value = {
     user,
     pet,
     surveyData,
+    partialSurveyData,
+    surveyCurrStep,
     practiceSession,
     practiceProgress,
     studiedChapters,
     signOut,
     completeSurvey,
+    updateSurveyProgress,
+    resetSurveyProgress,
     completeProfileSetup,
     updateStreakGoal,
     updateNotificationPreference,
