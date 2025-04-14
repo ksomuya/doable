@@ -1,16 +1,18 @@
-import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import "../global.css";
+import { Slot, Stack, SplashScreen } from "expo-router";
+import * as SplashScreenModule from "expo-splash-screen";
+import { useFonts } from "expo-font";
 import { AppProvider } from "./context/AppContext";
 import { ClerkProvider } from "@clerk/clerk-expo";
-import * as SecureStore from "expo-secure-store";
+import { StatusBar } from "expo-status-bar";
+import { Platform } from "react-native";
+import { DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import ClerkSupabaseSync from "./components/ClerkSupabaseSync";
+import * as SecureStore from "expo-secure-store";
+import "../global.css";
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
+// Keep the splash screen visible until we're ready
+SplashScreenModule.preventAutoHideAsync();
 SplashScreen.preventAutoHideAsync();
 
 // Create a secure token cache for Clerk
@@ -32,17 +34,27 @@ const tokenCache = {
 };
 
 export default function RootLayout() {
-  const [loaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
+    // Add any other custom fonts here
   });
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
+    // Hide the splash screen after a short delay or when fonts are loaded
+    const hideSplash = async () => {
+      if (fontsLoaded || fontError) {
+        // Add a slight delay to ensure everything is properly loaded
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await SplashScreenModule.hideAsync();
+        await SplashScreen.hideAsync();
+      }
+    };
 
-  if (!loaded) {
+    hideSplash();
+  }, [fontsLoaded, fontError]);
+
+  // Don't render anything until fonts are loaded
+  if (!fontsLoaded && !fontError) {
     return null;
   }
 
@@ -53,77 +65,24 @@ export default function RootLayout() {
     >
       <AppProvider>
         <ClerkSupabaseSync />
-        <ThemeProvider value={DefaultTheme}>
+        <ThemeProvider
+          value={{
+            ...DefaultTheme,
+            colors: {
+              ...DefaultTheme.colors,
+              background: "#fff",
+            },
+          }}
+        >
           <Stack
-            screenOptions={({ route }) => ({
-              headerShown: !route.name.startsWith("tempobook"),
-            })}
-          >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/index" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="onboarding/index"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/index"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/intro"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/question"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/summary"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/rewards-chest"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/performance-summary"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/final-choice"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/streak-setup"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="practice/notification-permission"
-              options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="study-progress/index"
-              options={{ headerTitle: "Study Progress", headerShown: true }}
-            />
-            <Stack.Screen
-              name="study-progress/chapters"
-              options={{ headerTitle: "Study Progress", headerShown: false }}
-            />
-            <Stack.Screen
-              name="study-progress/confirmation"
-              options={{ headerTitle: "Study Progress", headerShown: false }}
-            />
-            <Stack.Screen
-              name="study-progress/completion"
-              options={{ headerTitle: "Study Progress Completion", headerShown: false }}
-            />
-            <Stack.Screen
-              name="distraction-blocker"
-              options={{ headerShown: false }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: "#fff" },
+            }}
+          />
+          <StatusBar style={Platform.OS === 'ios' ? 'dark' : 'light'} />
         </ThemeProvider>
+        <Slot />
       </AppProvider>
     </ClerkProvider>
   );

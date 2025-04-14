@@ -7,6 +7,9 @@ module.exports = function (api) {
     plugins.push(["tempo-devtools/dist/babel-plugin"]);
   }
 
+  // Add react-native-reanimated plugin
+  plugins.push("react-native-reanimated/plugin");
+
   return {
     presets: [
       ["babel-preset-expo", { jsxImportSource: "nativewind" }],

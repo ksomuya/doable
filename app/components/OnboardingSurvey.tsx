@@ -150,19 +150,24 @@ const OnboardingSurvey = ({ onComplete = () => {} }: OnboardingSurveyProps) => {
     <SafeAreaView style={styles.container}>
       {/* Progress Bar and Back Button */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleBack}
+        <Animated.View
           style={[
-            styles.backButton,
-            currentStep === 0 && styles.backButtonHidden,
+            styles.backButtonContainer,
+            {
+              width: currentStep === 0 ? 0 : 44,
+              opacity: currentStep === 0 ? 0 : 1,
+              marginRight: currentStep === 0 ? 0 : 12,
+            },
           ]}
-          disabled={currentStep === 0}
         >
-          <ChevronLeft
-            color={currentStep === 0 ? "transparent" : "#000"}
-            size={24}
-          />
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleBack}
+            style={styles.backButton}
+            disabled={currentStep === 0}
+          >
+            <ChevronLeft color="#000" size={24} />
+          </TouchableOpacity>
+        </Animated.View>
         <View style={styles.progressContainer}>
           <View style={styles.progressBackground}>
             <Animated.View
@@ -254,12 +259,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
   },
+  backButtonContainer: {
+    overflow: 'hidden',
+    height: 40,
+    justifyContent: 'center',
+  },
   backButton: {
     padding: 8,
-    marginRight: 12,
-  },
-  backButtonHidden: {
-    opacity: 0,
   },
   progressContainer: {
     flex: 1,

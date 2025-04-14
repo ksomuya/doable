@@ -29,7 +29,7 @@ const PracticeIntroScreen = () => {
           <TypingText
             text={message}
             style={styles.speechText}
-            typingSpeed={40}
+            typingSpeed={15}
             onTypingComplete={() => setTypingComplete(true)}
           />
           <View style={styles.speechTail} />

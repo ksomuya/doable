@@ -7,22 +7,28 @@ interface TypingTextProps {
   typingSpeed?: number;
   onTypingComplete?: () => void;
   className?: string;
+  showCursor?: boolean;
+  addPeriod?: boolean;
 }
 
 const TypingText: React.FC<TypingTextProps> = ({
   text,
   style,
-  typingSpeed = 50,
+  typingSpeed = 20,
   onTypingComplete,
-  className
+  className,
+  showCursor = true,
+  addPeriod = true
 }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
     // Reset when text changes
     setDisplayedText('');
     setCurrentIndex(0);
+    setIsComplete(false);
   }, [text]);
 
   useEffect(() => {
@@ -33,15 +39,30 @@ const TypingText: React.FC<TypingTextProps> = ({
       }, typingSpeed);
       
       return () => clearTimeout(timeout);
-    } else if (onTypingComplete && currentIndex === text.length) {
-      onTypingComplete();
+    } else if (!isComplete) {
+      setIsComplete(true);
+      
+      // Add a period at the end if requested and the text doesn't already end with punctuation
+      if (addPeriod && text.length > 0) {
+        const lastChar = text[text.length - 1];
+        if (!['.', '!', '?', ',', ';', ':'].includes(lastChar)) {
+          setDisplayedText(prev => prev + '.');
+        }
+      }
+      
+      // Call completion callback
+      if (onTypingComplete) {
+        onTypingComplete();
+      }
     }
-  }, [currentIndex, text, typingSpeed, onTypingComplete]);
+  }, [currentIndex, text, typingSpeed, onTypingComplete, addPeriod, isComplete]);
 
   return (
     <Text style={style} className={className}>
       {displayedText}
-      <Text style={{ opacity: currentIndex === text.length ? 0 : 1 }}>|</Text>
+      {showCursor && !isComplete && (
+        <Text style={{ opacity: currentIndex === text.length ? 0 : 1 }}>|</Text>
+      )}
     </Text>
   );
 };

@@ -197,7 +197,7 @@ const OnboardingScreen = () => {
             <TypingText 
               text={message} 
               className="text-center text-xl font-medium text-[#1F2937]"
-              typingSpeed={40} 
+              typingSpeed={15} 
               onTypingComplete={() => setTypingComplete(true)}
             />
             {/* Speech Bubble Tail */}
