@@ -10,6 +10,7 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  Alert,
 } from "react-native";
 import { ArrowLeft, Flag, Bookmark, CheckCircle, Clock, Award, Zap, ChevronRight, HelpCircle, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -23,12 +24,17 @@ import AnswerFeedbackModal from "../components/AnswerFeedbackModal";
 import QuestionReportModal from "../components/QuestionReportModal";
 import BookmarkButton from "../components/BookmarkButton";
 import StreakIndicator from "../components/StreakIndicator";
+import usePracticeTracker from "../hooks/usePracticeTracker";
+import { PracticeType } from "../utils/types";
 
 type QuestionDifficulty = "Easy" | "Medium" | "Hard";
 
 const QuestionScreen = () => {
   const { subject, goal, xp, type } = useLocalSearchParams();
   const { user, updatePracticeProgress, isFirstPracticeSession, practiceProgress } = useAppContext();
+  
+  // Initialize practice tracker hook
+  const practiceTracker = usePracticeTracker(type as PracticeType || 'recall');
 
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -51,9 +57,32 @@ const QuestionScreen = () => {
   const [timeSpent, setTimeSpent] = useState(0);
   const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
   const [timerStart, setTimerStart] = useState(Date.now());
+  const [showNewUnlockAlert, setShowNewUnlockAlert] = useState(false);
+  const [newUnlockType, setNewUnlockType] = useState<string>("");
 
   // Screen width for responsive styling
   const screenWidth = Dimensions.get('window').width;
+
+  // Check for new practice type unlocks
+  useEffect(() => {
+    if (practiceTracker.newUnlocks.length > 0) {
+      const latestUnlock = practiceTracker.newUnlocks[0];
+      setNewUnlockType(latestUnlock);
+      setShowNewUnlockAlert(true);
+    }
+  }, [practiceTracker.newUnlocks]);
+
+  // Show alert for new practice type unlocks
+  useEffect(() => {
+    if (showNewUnlockAlert && newUnlockType) {
+      const unlockName = newUnlockType.charAt(0).toUpperCase() + newUnlockType.slice(1);
+      Alert.alert(
+        `🎉 ${unlockName} Mode Unlocked!`,
+        `You've unlocked the ${unlockName} practice mode! Try it out in your next session.`,
+        [{ text: "Awesome!", onPress: () => setShowNewUnlockAlert(false) }]
+      );
+    }
+  }, [showNewUnlockAlert, newUnlockType]);
 
   // Reset selected answer when question changes
   useEffect(() => {
@@ -188,6 +217,13 @@ const QuestionScreen = () => {
     // Calculate time spent on this question
     const questionTimeSpent = Math.floor((Date.now() - timerStart) / 1000);
     
+    // Track attempt using practice tracker
+    practiceTracker.trackAttempt({
+      question_id: currentQuestion.id,
+      is_correct: isCorrect,
+      time_taken_seconds: questionTimeSpent
+    });
+    
     // Update XP and streak
     if (isCorrect) {
       // Award more XP for correct answers
@@ -245,6 +281,9 @@ const QuestionScreen = () => {
 
   // Navigate to rewards chest screen
   const navigateToSummary = () => {
+    // Get practice session stats
+    const sessionStats = practiceTracker.getSessionStats();
+    
     // For first-time users, go to streak setup
     if (isFirstPracticeSession()) {
       router.push({
@@ -254,6 +293,8 @@ const QuestionScreen = () => {
           correctAnswers: correctAnswers.toString(),
           xpEarned: currentXP.toString(),
           goalXP: goalXP.toString(),
+          averageTime: Math.round(sessionStats.averageTime).toString(),
+          accuracy: Math.round(sessionStats.accuracy).toString(),
         },
       });
     } else {
@@ -265,9 +306,14 @@ const QuestionScreen = () => {
           correctAnswers: correctAnswers.toString(),
           xpEarned: currentXP.toString(),
           goalXP: goalXP.toString(),
+          averageTime: Math.round(sessionStats.averageTime).toString(),
+          accuracy: Math.round(sessionStats.accuracy).toString(),
         },
       });
     }
+    
+    // Reset practice tracker
+    practiceTracker.resetTracker();
   };
 
   // Handle try again

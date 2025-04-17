@@ -508,24 +508,26 @@ export const hasAtLeastOneTopic = async (
   authToken?: string
 ): Promise<boolean> => {
   try {
+    console.log("Checking topics once for userId:", userId);
+    
     // Use authenticated client if token is provided
     const client = authToken ? await getSupabaseWithAuth(authToken) : supabase;
     
-    // Check if the user has any studied topics or chapters
-    const { data: studiedItems, error } = await client
+    // Efficient query to just check if any topics exist (limit 1)
+    const { data, error } = await client
       .from('user_studied_topics')
       .select('id')
       .eq('user_id', userId)
       .limit(1);
     
     if (error) {
-      console.error('Error checking studied topics:', error);
+      console.error('Error checking for topics:', error);
       return false;
     }
     
-    return studiedItems && studiedItems.length > 0;
+    return data && data.length > 0;
   } catch (error) {
-    console.error('Error checking if user has topics:', error);
+    console.error('Error in hasAtLeastOneTopic:', error);
     return false;
   }
 };

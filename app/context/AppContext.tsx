@@ -49,6 +49,7 @@ type UserData = {
   dateOfBirth: Date | null;
   parentMobile: string;
   goals: UserGoals;
+  evaluation_completed: boolean;
 };
 
 type PetData = {
@@ -80,6 +81,7 @@ type AppContextType = {
   practiceProgress: PracticeProgress;
   studiedChapters: string[];
   isSupabaseAuthReady: boolean;
+  hasStudyTopics: boolean;
   setSupabaseAuthStatus: (isReady: boolean) => void;
   // Auth actions
   signOut: () => void;
@@ -151,7 +153,8 @@ const defaultUser: UserData = {
   rank: 5000,
   dateOfBirth: null,
   parentMobile: "",
-  goals: defaultGoals
+  goals: defaultGoals,
+  evaluation_completed: true,
 };
 
 const defaultPet: PetData = {
@@ -221,6 +224,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [studiedChapters, setStudiedChapters] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSupabaseAuthReady, setIsSupabaseAuthReady] = useState(false);
+  const [hasStudyTopics, setHasStudyTopics] = useState(false);
 
   // Load persisted data on app start
   useEffect(() => {
@@ -239,7 +243,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
         if (userData) setUser({ ...defaultUser, ...JSON.parse(userData) });
         if (petData) setPet({ ...defaultPet, ...JSON.parse(petData) });
         if (surveyData) setSurveyData({ ...defaultSurveyData, ...JSON.parse(surveyData) });
-        if (chaptersData) setStudiedChapters(JSON.parse(chaptersData));
+        
+        // Set studiedChapters and hasStudyTopics together
+        if (chaptersData) {
+          const chapters = JSON.parse(chaptersData);
+          setStudiedChapters(chapters);
+          setHasStudyTopics(chapters.length > 0);
+        }
+        
         if (goalsData) setUser(prevUser => ({
           ...prevUser,
           goals: JSON.parse(goalsData)
@@ -444,6 +455,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
       // Update user state with Supabase data
       setUser(prev => ({
         ...prev,
+        ...userData,
+        evaluation_completed: true,
         isOnboarded: userData.is_onboarded,
         isProfileSetup: userData.is_profile_setup,
         firstName: userData.first_name || prev.firstName,
@@ -810,6 +823,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     // This prevents unnecessary re-renders and state updates
     if (JSON.stringify(chapters) !== JSON.stringify(studiedChapters)) {
       setStudiedChapters(chapters);
+      setHasStudyTopics(chapters.length > 0);
     }
   };
 
@@ -837,6 +851,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setIsSupabaseAuthReady(isReady);
   };
 
+  // Check user topics once at startup to avoid repeated checks
+  const checkUserTopics = async () => {
+    if (!clerkUser?.id) return;
+    
+    try {
+      // If we already have chapters stored, use that information
+      if (studiedChapters.length > 0) {
+        setHasStudyTopics(true);
+        return;
+      }
+      
+      // Otherwise, make a single API call to check if user has topics
+      const { data, error } = await supabase
+        .from('user_studied_topics')
+        .select('id')
+        .eq('user_id', clerkUser.id)
+        .limit(1);
+        
+      if (error) {
+        console.error('Error checking for topics:', error);
+        return;
+      }
+      
+      const hasTopics = data && data.length > 0;
+      setHasStudyTopics(hasTopics);
+      console.log("User has topics check completed:", hasTopics);
+    } catch (error) {
+      console.error('Error checking user topics:', error);
+    }
+  };
+
+  // Call this function once when the user signs in
+  useEffect(() => {
+    if (isSignedIn && clerkUser && isSupabaseAuthReady) {
+      checkUserTopics();
+    }
+  }, [isSignedIn, clerkUser?.id, isSupabaseAuthReady]);
+
   const value = {
     user,
     pet,
@@ -847,6 +899,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     practiceProgress,
     studiedChapters,
     isSupabaseAuthReady,
+    hasStudyTopics,
     setSupabaseAuthStatus,
     signOut,
     completeSurvey,

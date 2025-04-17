@@ -63,7 +63,7 @@ Here is your full plan converted into a clean **step-by-step checklist** for Cur
 - [x] **Extend roll‑up functions**
   - [x] `fn_rollup_daily()`  
   - [x] `fn_rollup_weekly()`
-- [x] **Build “Performance” tab in `reports`**
+- [x] **Build "Performance" tab in `reports`**
   - [x] Bar chart — Accuracy by subject  
   - [x] Heat‑map — Time × Difficulty by topic  
   - [x] Period selector (Daily / Weekly / Custom)
@@ -81,7 +81,7 @@ Here is your full plan converted into a clean **step-by-step checklist** for Cur
   - [ ] Colour bands + label
 - [ ] **Modal on tap**
   - [ ] List weakest subjects & topics  
-  - [ ] CTA “Start Refine Session”
+  - [ ] CTA "Start Refine Session"
 - [ ] **Empty‑state nudge** when no data
 
 ---
@@ -96,16 +96,16 @@ Here is your full plan converted into a clean **step-by-step checklist** for Cur
 - [ ] **Habits tab in `study habits`**
   - [ ] Streak calendar heat‑map  
   - [ ] Bar chart minutes per weekday  
-  - [ ] Highlight card “Best focus time”
+  - [ ] Highlight card "Best focus time"
 - [ ] **Pass `best_hour_utc` to push‑reminder scheduler**
 
 ---
 
 #### 2‑D  Motivational Nudges
-- [ ] Detect “no data” state (`evt_question_attempts` count == 0)
+- [ ] Detect "no data" state (`evt_question_attempts` count == 0)
 - [ ] Display Nudge component
   - [ ] Illustration + copy  
-  - [ ] Button “Start Practice”
+  - [ ] Button "Start Practice"
 - [ ] Emit analytics event `NudgeShown`
 
 ---
@@ -161,20 +161,64 @@ Here is your full plan converted into a clean **step-by-step checklist** for Cur
 
 ---
 
-## **PHASE 6 — XP System & Gamification**
+Here's your **updated checklist for PHASE 6 — XP System & Gamification** with all your requests included:
 
-- [ ] **Set XP Goals Before Practice**
-  - [ ] Prompt user to select XP target before session
-  - [ ] Track XP earned in session
-  - [ ] Apply percentage bonus based on goal size
+---
 
-- [ ] **Dopamine Hit Visuals**
-  - [ ] Show sad pet animation on wrong answer
-  - [ ] Show confetti + happy pet after 5–10 correct answers
+## ✅ **PHASE 6 — XP System & Gamification (Final Version)**
 
-- [ ] **Random Reward System**
-  - [ ] 20% chance to show surprise reward after session
-  - [ ] Include bonus XP, badges, animations, etc.
+---
+
+### 🎯 **Set XP Goals Before Practice**
+- [ ] Allow user to **set an XP goal** before session starts
+- [ ] Track **XP earned live** during the session
+- [ ] When user reaches the goal:
+  - [ ] Trigger **excited pet animation**
+  - [ ] Show message:  
+    _"Great job! You've reached your goal — every question now earns **+X% XP**!"_
+  - [ ] Apply **XP multiplier** to all further questions in the session
+
+---
+
+### 🧠 **Feedback Animations on Answer**
+
+#### ✅ Correct Answer
+- [ ] After every 5 correct answers in a row:
+  - [ ] Show **excited pet animation**
+  - [ ] Display message:  
+    _"🔥 5 in a row! You're on fire!"_
+
+#### ❌ Incorrect Answer
+- [ ] Show **writing pet animation**
+- [ ] Display a **motivational message** like:  
+  _"Don't worry! Let's try that again together."_
+
+---
+
+### 🎁 **End-of-Session Reward Reveal**
+- [ ] Show **treasure chest animation** at the end of the practice session
+- [ ] Reveal rewards:
+  - [ ] Total XP earned
+  - [ ] Bonus XP from streaks or goal multiplier
+  - [ ] Badges or surprise rewards (if any)
+- [ ] Include a "Continue" or "Keep Going" button for next action
+
+---
+
+### 🎲 **Random Surprise Reward System**
+- [ ] After a session ends, with 20% chance:
+  - [ ] Show **special animation** (e.g. sparkles or animated badge)
+  - [ ] Give user a surprise reward like:
+    - [ ] Bonus XP (e.g., +50 XP)
+    - [ ] Temporary XP booster
+    - [ ] Special badge (e.g., "Focused Owl")
+
+---
+
+### 🛠 Optional Enhancements (Advanced)
+- [ ] Make animations stackable (e.g., 5-in-a-row + XP Goal reached)
+- [ ] Store reward history in DB for user profile display
+- [ ] Animate the XP progress bar filling live
 
 ---
 
@@ -216,3 +260,75 @@ Here is your full plan converted into a clean **step-by-step checklist** for Cur
 ---
 
 Let me know if you want this converted into a `.md` file or pasted directly into Cursor task format.
+
+
+Below is a copy‑paste‑ready **implementation checklist** (modeled after the Cursor / Notion style you liked) that covers every layer—DB, backend, and Expo‑Router UI—for the new **"Start Practice" gating flow**.
+
+---
+
+## ✅ Doable App — "Start Practice" Gating & Unlock System
+
+---
+
+### ✅ 0 · Prep & Migration
+  - [x] Adds new tables & columns listed in §1
+
+---
+
+### ✅ 1 · Database Schema (Supabase)
+
+| Table / Column | Type | Purpose |
+|----------------|------|---------|
+| **`user_studied_topics`** | *(exists)* | already records topics user marked as studied |
+| **`user_practice_stats`** | `user_id UUID PK`<br>`recall_attempts INT DEFAULT 0`<br>`refine_attempts INT DEFAULT 0` | running totals for unlock logic |
+| **`practice_unlocks`** | `user_id UUID`<br>`practice_type TEXT` (`recall`,`refine`,`conquer`)<br>`unlocked_at TIMESTAMPTZ` | historical log / analytics |
+| **`subject_unlock_status`** (MATERIALIZED VIEW) | `user_id` `subject_id` `is_unlocked BOOL` | fast look‑ups for subject gating |
+
+> **RLS**
+> ```sql
+> -- user_practice_stats
+> CREATE POLICY "user can read/write own stats"
+>   ON user_practice_stats FOR ALL
+>   USING (auth.uid() = user_id)
+>   WITH CHECK (auth.uid() = user_id);
+> ```
+
+---
+
+### ✅ 2 · Edge Function / RPCs
+
+1. [x] **`get_available_subjects(user_id, exam_id)`**
+   - Returns every subject with `is_unlocked` flag (uses `subject_unlock_status`).
+2. [x] **`increment_practice_attempt(user_id, practice_type, n)`**
+   - Atomically `UPDATE user_practice_stats … RETURNING totals`.
+   - If thresholds crossed (50 → Refine, 100 each → Conquer) → insert row in `practice_unlocks`.
+
+---
+
+### ✅ 3 · Frontend (Expo Router)
+
+#### ✅ 3.1 SubjectSelectionScreen
+- [x] **Fetch** `get_available_subjects`.
+- [x] **Render grid**  
+  - **Unlocked** → normal card.  
+  - **Locked** → greyed‑out, lock icon, CTA "Add a topic to unlock".
+- [x] **On locked tap** → modal explaining requirement + **"Go to Add Topics"** button.
+
+#### ✅ 3.2 PracticeTypeScreen
+- [x] **Fetch** `user_practice_stats` + `practice_unlocks`.
+- [x] **Display chips**  
+  - Recall → always enabled.  
+  - Refine → disabled until `recall_attempts ≥ 50`.  
+  - Conquer → disabled until `recall_attempts ≥ 100 && refine_attempts ≥ 100`.
+- [x] **Progress bar** under each locked chip: "34 / 50 questions solved".
+
+#### ✅ 3.3 Session Flow Hook
+- [x] **`usePracticeTracker()`**  
+  - Subscribes to question results stream.  
+  - On every *correct or attempted* question → call `increment_practice_attempt`.
+
+---
+
+### ✅ 4 · Analytics & Gamification
+
+- [x] **Amplitude / PostHog** event `"practice_type_unlocked"` with `practice_type`.

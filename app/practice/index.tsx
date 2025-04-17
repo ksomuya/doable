@@ -6,86 +6,79 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  Alert,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, BookOpen, Clock, Award, Zap, AlertTriangle, TrendingUp } from "lucide-react-native";
+import { ArrowLeft, AlertTriangle, Lock } from "lucide-react-native";
 import { useAppContext } from "../context/AppContext";
-import { useUser, useAuth } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/clerk-expo";
 import ProgressBar from "../components/ProgressBar";
-import { hasAtLeastOneTopic } from "../utils/chapterUtils";
-import { hasCompletedEvaluation } from "../utils/evaluationUtils";
-
-interface Subject {
-  id: string;
-  name: string;
-  icon?: React.ReactNode;
-}
-
-const subjects: Subject[] = [
-  {
-    id: "mathematics",
-    name: "Mathematics",
-  },
-  {
-    id: "physics",
-    name: "Physics",
-  },
-  {
-    id: "chemistry",
-    name: "Chemistry",
-  },
-];
+import { getAvailableSubjects } from "../utils/practiceUtils";
+import { Subject } from "../utils/types";
 
 const PracticeHomeScreen = () => {
   const router = useRouter();
-  const { isFirstPracticeSession, setPracticeStep, updatePracticeStepInfo, practiceProgress } = useAppContext();
+  const { setPracticeStep, updatePracticeStepInfo, practiceProgress, hasStudyTopics } = useAppContext();
   const { user: clerkUser } = useUser();
-  const { getToken } = useAuth();
   
+  const [subjectsData, setSubjectsData] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [checkingTopics, setCheckingTopics] = useState(true);
-  const [hasTopics, setHasTopics] = useState(false);
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [evaluationCompleted, setEvaluationCompleted] = useState(true); // Default to true to avoid showing evaluation unnecessarily
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showLockedModal, setShowLockedModal] = useState(false);
+  const [selectedLockedSubject, setSelectedLockedSubject] = useState<string>("");
 
-  // Set initial step when component loads
+  // Fetch available subjects when component loads
   useEffect(() => {
     setPracticeStep(1, 4); // Step 1 of 4 in the practice flow
-  }, []);
-
-  // Check if the user has at least one topic and if evaluation is completed
-  useEffect(() => {
-    const checkUserStatus = async () => {
-      if (!clerkUser?.id) return;
-      
-      try {
-        setCheckingTopics(true);
-        const token = await getToken({ template: 'supabase' });
-        
-        // Check for topics in parallel
-        const [topicsExist, evalCompleted] = await Promise.all([
-          hasAtLeastOneTopic(clerkUser.id, token || undefined),
-          hasCompletedEvaluation(clerkUser.id, token || undefined)
-        ]);
-        
-        setHasTopics(topicsExist);
-        setEvaluationCompleted(evalCompleted);
-        console.log("User status:", { topicsExist, evalCompleted });
-      } catch (error) {
-        console.error("Error checking user status:", error);
-      } finally {
-        setCheckingTopics(false);
-        setIsFirstLoad(false);
-      }
-    };
     
-    checkUserStatus();
-  }, [clerkUser?.id, getToken]);
+    if (clerkUser?.id) {
+      fetchAvailableSubjects();
+    } else {
+      setTimeout(() => {
+        setInitialLoading(false);
+      }, 300);
+    }
+  }, [clerkUser?.id]);
 
-  const handleSubjectSelect = (subjectId: string) => {
+  // Fetch available subjects based on user exam type
+  const fetchAvailableSubjects = async () => {
+    try {
+      setError(null);
+      
+      // Use default exam type as JEE if not available
+      const examType = "JEE"; // This should ideally come from user preferences
+      
+      const { subjects, error } = await getAvailableSubjects(
+        clerkUser?.id || "", 
+        examType
+      );
+      
+      if (error) {
+        setError(error);
+      } else {
+        setSubjectsData(subjects);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch subjects");
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
+  const handleSubjectSelect = (subjectId: string, isUnlocked: boolean) => {
+    if (!isUnlocked) {
+      // Find the subject name
+      const subject = subjectsData.find(s => s.id === subjectId);
+      if (subject) {
+        setSelectedLockedSubject(subject.name);
+        setShowLockedModal(true);
+      }
+      return;
+    }
+    
     setSelectedSubject(subjectId);
   };
 
@@ -109,14 +102,6 @@ const PracticeHomeScreen = () => {
     router.push("/");
   };
 
-  const handleEvaluationStart = () => {
-    // Use a different approach to navigate to evaluation
-    router.push({
-      pathname: "/",
-      params: { showEvaluation: "true" }
-    });
-  };
-
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
       <View style={styles.container}>
@@ -138,12 +123,12 @@ const PracticeHomeScreen = () => {
           <View style={styles.placeholder} />
         </View>
 
-        {checkingTopics ? (
+        {initialLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#ED7930" />
-            <Text style={styles.loadingText}>Checking your progress...</Text>
+            <Text style={styles.loadingText}>Loading practice session...</Text>
           </View>
-        ) : !hasTopics ? (
+        ) : !hasStudyTopics ? (
           <ScrollView style={styles.content}>
             <Text style={styles.title}>Add Topics First</Text>
             <Text style={styles.subtitle}>
@@ -165,28 +150,18 @@ const PracticeHomeScreen = () => {
               </TouchableOpacity>
             </View>
           </ScrollView>
-        ) : !evaluationCompleted ? (
-          <ScrollView style={styles.content}>
-            <Text style={styles.title}>Initial Evaluation</Text>
-            <Text style={styles.subtitle}>
-              Complete a quick evaluation to help us personalize your learning experience.
-            </Text>
-
-            <View style={styles.evaluationCard}>
-              <TrendingUp size={28} color="#4F46E5" style={styles.evaluationIcon} />
-              <Text style={styles.evaluationTitle}>Start Your Evaluation</Text>
-              <Text style={styles.evaluationDescription}>
-                Answer a few questions based on your selected topics. This will help us understand your current knowledge level.
-              </Text>
-              
-              <TouchableOpacity 
-                style={styles.evaluationButton}
-                onPress={handleEvaluationStart}
-              >
-                <Text style={styles.evaluationButtonText}>Start Evaluation</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <AlertTriangle size={32} color="#EF4444" style={styles.warningIcon} />
+            <Text style={styles.errorTitle}>Error Loading Subjects</Text>
+            <Text style={styles.errorDescription}>{error}</Text>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={fetchAvailableSubjects}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <ScrollView style={styles.content}>
             <Text style={styles.title}>Subjects</Text>
@@ -195,29 +170,43 @@ const PracticeHomeScreen = () => {
             </Text>
 
             <View style={styles.subjectsContainer}>
-              {subjects.map((subject) => (
+              {subjectsData.map((subject) => (
                 <TouchableOpacity
                   key={subject.id}
                   style={[
                     styles.subjectItem,
-                    selectedSubject === subject.id && styles.selectedSubjectItem,
+                    selectedSubject === subject.id && subject.is_unlocked && styles.selectedSubjectItem,
+                    !subject.is_unlocked && styles.lockedSubjectItem,
                   ]}
-                  onPress={() => handleSubjectSelect(subject.id)}
+                  onPress={() => handleSubjectSelect(subject.id, subject.is_unlocked)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.radioButton}>
-                    {selectedSubject === subject.id && (
+                    {selectedSubject === subject.id && subject.is_unlocked ? (
                       <View style={styles.radioButtonSelected} />
-                    )}
+                    ) : !subject.is_unlocked ? (
+                      <Lock size={16} color="#9CA3AF" />
+                    ) : null}
                   </View>
-                  <Text style={styles.subjectName}>{subject.name}</Text>
+                  <Text 
+                    style={[
+                      styles.subjectName,
+                      !subject.is_unlocked && styles.lockedSubjectName
+                    ]}
+                  >
+                    {subject.name}
+                  </Text>
+                  
+                  {!subject.is_unlocked && (
+                    <Text style={styles.lockedLabel}>Locked</Text>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
         )}
 
-        {!checkingTopics && hasTopics && evaluationCompleted && (
+        {!initialLoading && hasStudyTopics && !error && (
           <View style={styles.footer}>
             <TouchableOpacity
               style={[
@@ -235,12 +224,43 @@ const PracticeHomeScreen = () => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Locked Subject Modal */}
+        <Modal
+          visible={showLockedModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowLockedModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Lock size={32} color="#4F46E5" style={styles.modalIcon} />
+              <Text style={styles.modalTitle}>Subject Locked</Text>
+              <Text style={styles.modalDescription}>
+                You need to add at least one topic from {selectedLockedSubject} to unlock this subject for practice.
+              </Text>
+              <TouchableOpacity 
+                style={styles.addTopicsModalButton}
+                onPress={() => {
+                  setShowLockedModal(false);
+                  router.push("/");
+                }}
+              >
+                <Text style={styles.addTopicsModalButtonText}>Go to Add Topics</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowLockedModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
 };
-
-export default PracticeHomeScreen;
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -308,6 +328,11 @@ const styles = StyleSheet.create({
     borderColor: "#4F46E5",
     backgroundColor: "#EEF2FF",
   },
+  lockedSubjectItem: {
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F3F4F6",
+    opacity: 0.8,
+  },
   radioButton: {
     width: 20,
     height: 20,
@@ -328,6 +353,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     color: "#1F2937",
+    flex: 1,
+  },
+  lockedSubjectName: {
+    color: "#9CA3AF",
+  },
+  lockedLabel: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontWeight: "500",
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
   footer: {
     padding: 20,
@@ -393,39 +431,93 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  evaluationCard: {
-    backgroundColor: "#E0E7FF",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+  // Error styles
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
-  evaluationIcon: {
-    marginBottom: 12,
-  },
-  evaluationTitle: {
+  errorTitle: {
     fontSize: 18,
     fontWeight: "600",
     color: "#000000",
     marginBottom: 8,
     textAlign: "center",
   },
-  evaluationDescription: {
+  errorDescription: {
     fontSize: 14,
     color: "#4B5563",
     textAlign: "center",
     marginBottom: 16,
   },
-  evaluationButton: {
+  retryButton: {
     backgroundColor: "#4F46E5",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 100,
     alignItems: "center",
   },
-  evaluationButtonText: {
+  retryButtonText: {
     color: "white",
     fontSize: 14,
     fontWeight: "600",
   },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "85%",
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalIcon: {
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#000000",
+    marginBottom: 12,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: "#4B5563",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  addTopicsModalButton: {
+    backgroundColor: "#4F46E5",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 100,
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 12,
+  },
+  addTopicsModalButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 100,
+    alignItems: "center",
+    width: "100%",
+  },
+  cancelButtonText: {
+    color: "#4B5563",
+    fontSize: 14,
+    fontWeight: "600",
+  },
 });
+
+export default PracticeHomeScreen;
