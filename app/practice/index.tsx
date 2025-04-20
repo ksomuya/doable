@@ -7,20 +7,105 @@ import {
   ActivityIndicator,
   ScrollView,
   Modal,
+  Image,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { ArrowLeft, AlertTriangle, Lock } from "lucide-react-native";
+import { ArrowLeft, AlertTriangle, Lock, BookOpen, Atom, Beaker, BookOpenCheck } from "lucide-react-native";
 import { useAppContext } from "../context/AppContext";
 import { useUser } from "@clerk/clerk-expo";
 import ProgressBar from "../components/ProgressBar";
 import { getAvailableSubjects } from "../utils/practiceUtils";
 import { Subject } from "../utils/types";
+import { LinearGradient } from "expo-linear-gradient";
+
+// Subject icons mapping
+const SubjectIcons = {
+  Mathematics: (color: string) => <BookOpen size={24} color={color} />,
+  Physics: (color: string) => <Atom size={24} color={color} />,
+  Chemistry: (color: string) => <Beaker size={24} color={color} />,
+};
+
+// Subject gradient colors
+const SubjectGradients = {
+  Mathematics: ["#EEF2FF", "#C7D2FE"] as [string, string],
+  Physics: ["#F0FDFA", "#99F6E4"] as [string, string],
+  Chemistry: ["#FEF3C7", "#FDE68A"] as [string, string],
+};
+
+// Subject border colors
+const SubjectBorders = {
+  Mathematics: "#818CF8",
+  Physics: "#2DD4BF",
+  Chemistry: "#F59E0B",
+};
+
+// Replace the image with an icon in the noTopicsCard
+const NoTopicsCard = ({ onPress }: { onPress: () => void }) => (
+  <View style={styles.noTopicsCard}>
+    <View style={styles.emptyStateIconContainer}>
+      <BookOpenCheck size={64} color="#4F46E5" />
+    </View>
+    <Text style={styles.noTopicsTitle}>No Topics Selected</Text>
+    <Text style={styles.noTopicsDescription}>
+      You need to add topics you've studied before you can practice. This helps us personalize your learning experience.
+    </Text>
+    
+    <TouchableOpacity 
+      style={styles.addTopicsButton}
+      onPress={onPress}
+    >
+      <Text style={styles.addTopicsButtonText}>Add Topics</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// Replace the image with an icon in the lockedModal
+const LockedModal = ({ visible, subject, onCancel, onAddTopics }: { 
+  visible: boolean; 
+  subject: string; 
+  onCancel: () => void; 
+  onAddTopics: () => void; 
+}) => (
+  <Modal
+    visible={visible}
+    transparent={true}
+    animationType="fade"
+    onRequestClose={onCancel}
+  >
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        <View style={styles.lockedIconContainer}>
+          <Lock size={48} color="#4F46E5" />
+        </View>
+        <Text style={styles.modalTitle}>Subject Locked</Text>
+        <Text style={styles.modalDescription}>
+          You need to add at least one topic from {subject} to unlock this subject for practice.
+        </Text>
+        <TouchableOpacity 
+          style={styles.addTopicsModalButton}
+          onPress={onAddTopics}
+        >
+          <Text style={styles.addTopicsModalButtonText}>Go to Add Topics</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.cancelButton}
+          onPress={onCancel}
+        >
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
 
 const PracticeHomeScreen = () => {
   const router = useRouter();
   const { setPracticeStep, updatePracticeStepInfo, practiceProgress, hasStudyTopics } = useAppContext();
   const { user: clerkUser } = useUser();
+  const { width } = Dimensions.get("window");
   
   const [subjectsData, setSubjectsData] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -29,6 +114,10 @@ const PracticeHomeScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLockedModal, setShowLockedModal] = useState(false);
   const [selectedLockedSubject, setSelectedLockedSubject] = useState<string>("");
+  
+  // Animation values
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(20)).current;
 
   // Fetch available subjects when component loads
   useEffect(() => {
@@ -42,6 +131,24 @@ const PracticeHomeScreen = () => {
       }, 300);
     }
   }, [clerkUser?.id]);
+
+  // Run entrance animation when data is loaded
+  useEffect(() => {
+    if (!initialLoading && !error) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [initialLoading, error]);
 
   // Fetch available subjects based on user exam type
   const fetchAvailableSubjects = async () => {
@@ -102,9 +209,38 @@ const PracticeHomeScreen = () => {
     router.push("/");
   };
 
+  const handleCloseLockedModal = () => {
+    setShowLockedModal(false);
+  };
+
+  const handleGoToAddTopics = () => {
+    setShowLockedModal(false);
+    router.push("/");
+  };
+
+  // Helper to get icon for subject
+  const getSubjectIcon = (subjectName: string, isUnlocked: boolean) => {
+    const color = isUnlocked ? "#FFFFFF" : "#9CA3AF";
+    const IconComponent = SubjectIcons[subjectName as keyof typeof SubjectIcons];
+    return IconComponent ? IconComponent(color) : <BookOpen size={24} color={color} />;
+  };
+
+  // Helper to get gradient colors for subject
+  const getSubjectGradient = (subjectName: string) => {
+    return SubjectGradients[subjectName as keyof typeof SubjectGradients] || ["#F9FAFB", "#F3F4F6"];
+  };
+
+  // Helper to get border color for subject
+  const getSubjectBorder = (subjectName: string) => {
+    return SubjectBorders[subjectName as keyof typeof SubjectBorders] || "#E5E7EB";
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <View style={styles.container}>
+      <LinearGradient
+        colors={["#FFFFFF", "#F9FAFB"]}
+        style={styles.container}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -125,34 +261,21 @@ const PracticeHomeScreen = () => {
 
         {initialLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#ED7930" />
+            <ActivityIndicator size="large" color="#4F46E5" />
             <Text style={styles.loadingText}>Loading practice session...</Text>
           </View>
         ) : !hasStudyTopics ? (
-          <ScrollView style={styles.content}>
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Add Topics First</Text>
             <Text style={styles.subtitle}>
               Please select at least one topic from the home screen before starting a practice session.
             </Text>
 
-            <View style={styles.noTopicsCard}>
-              <AlertTriangle size={32} color="#ED7930" style={styles.warningIcon} />
-              <Text style={styles.noTopicsTitle}>No Topics Selected</Text>
-              <Text style={styles.noTopicsDescription}>
-                You need to add topics you've studied before you can practice. This helps us personalize your learning experience.
-              </Text>
-              
-              <TouchableOpacity 
-                style={styles.addTopicsButton}
-                onPress={handleAddTopics}
-              >
-                <Text style={styles.addTopicsButtonText}>Add Topics</Text>
-              </TouchableOpacity>
-            </View>
+            <NoTopicsCard onPress={handleAddTopics} />
           </ScrollView>
         ) : error ? (
           <View style={styles.errorContainer}>
-            <AlertTriangle size={32} color="#EF4444" style={styles.warningIcon} />
+            <AlertTriangle size={48} color="#EF4444" style={styles.warningIcon} />
             <Text style={styles.errorTitle}>Error Loading Subjects</Text>
             <Text style={styles.errorDescription}>{error}</Text>
             <TouchableOpacity 
@@ -163,10 +286,19 @@ const PracticeHomeScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView style={styles.content}>
-            <Text style={styles.title}>Subjects</Text>
+          <Animated.ScrollView 
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]} 
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.title}>Choose a Subject</Text>
             <Text style={styles.subtitle}>
-              Select any one Subject to start practicing
+              Select any one subject to start practicing
             </Text>
 
             <View style={styles.subjectsContainer}>
@@ -175,35 +307,72 @@ const PracticeHomeScreen = () => {
                   key={subject.id}
                   style={[
                     styles.subjectItem,
-                    selectedSubject === subject.id && subject.is_unlocked && styles.selectedSubjectItem,
-                    !subject.is_unlocked && styles.lockedSubjectItem,
+                    subject.is_unlocked ? styles.unlockedSubjectItem : styles.lockedSubjectItem,
+                    selectedSubject === subject.id && subject.is_unlocked && {
+                      borderColor: getSubjectBorder(subject.name),
+                      borderWidth: 2,
+                    }
                   ]}
                   onPress={() => handleSubjectSelect(subject.id, subject.is_unlocked)}
-                  activeOpacity={0.7}
+                  activeOpacity={subject.is_unlocked ? 0.7 : 1}
                 >
-                  <View style={styles.radioButton}>
-                    {selectedSubject === subject.id && subject.is_unlocked ? (
-                      <View style={styles.radioButtonSelected} />
-                    ) : !subject.is_unlocked ? (
-                      <Lock size={16} color="#9CA3AF" />
-                    ) : null}
-                  </View>
-                  <Text 
+                  <LinearGradient
+                    colors={subject.is_unlocked ? getSubjectGradient(subject.name) : ["#F3F4F6", "#E5E7EB"]}
                     style={[
-                      styles.subjectName,
-                      !subject.is_unlocked && styles.lockedSubjectName
+                      styles.subjectItemContent,
+                      !subject.is_unlocked && styles.lockedSubjectItemContent
                     ]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
                   >
-                    {subject.name}
-                  </Text>
-                  
-                  {!subject.is_unlocked && (
-                    <Text style={styles.lockedLabel}>Locked</Text>
-                  )}
+                    <View style={[
+                      styles.iconContainer,
+                      {
+                        backgroundColor: subject.is_unlocked 
+                          ? getSubjectBorder(subject.name)
+                          : "#9CA3AF"
+                      }
+                    ]}>
+                      {!subject.is_unlocked ? (
+                        <Lock size={22} color="#FFFFFF" />
+                      ) : (
+                        getSubjectIcon(subject.name, true)
+                      )}
+                    </View>
+                    
+                    <View style={styles.subjectTextContainer}>
+                      <Text 
+                        style={[
+                          styles.subjectName,
+                          !subject.is_unlocked && styles.lockedSubjectName
+                        ]}
+                      >
+                        {subject.name}
+                      </Text>
+                      
+                      {!subject.is_unlocked && (
+                        <View style={styles.lockedBadgeContainer}>
+                          <Lock size={12} color="#9CA3AF" />
+                          <Text style={styles.lockedLabel}>Locked</Text>
+                        </View>
+                      )}
+                    </View>
+                    
+                    <View style={styles.radioButton}>
+                      {selectedSubject === subject.id && subject.is_unlocked && (
+                        <View style={[
+                          styles.radioButtonSelected,
+                          { backgroundColor: getSubjectBorder(subject.name) }
+                        ]} />
+                      )}
+                    </View>
+                  </LinearGradient>
                 </TouchableOpacity>
               ))}
             </View>
-          </ScrollView>
+
+            <View style={styles.bottomSpacing} />
+          </Animated.ScrollView>
         )}
 
         {!initialLoading && hasStudyTopics && !error && (
@@ -225,39 +394,14 @@ const PracticeHomeScreen = () => {
           </View>
         )}
 
-        {/* Locked Subject Modal */}
-        <Modal
+        {/* Use the LockedModal component */}
+        <LockedModal
           visible={showLockedModal}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowLockedModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Lock size={32} color="#4F46E5" style={styles.modalIcon} />
-              <Text style={styles.modalTitle}>Subject Locked</Text>
-              <Text style={styles.modalDescription}>
-                You need to add at least one topic from {selectedLockedSubject} to unlock this subject for practice.
-              </Text>
-              <TouchableOpacity 
-                style={styles.addTopicsModalButton}
-                onPress={() => {
-                  setShowLockedModal(false);
-                  router.push("/");
-                }}
-              >
-                <Text style={styles.addTopicsModalButtonText}>Go to Add Topics</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowLockedModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      </View>
+          subject={selectedLockedSubject}
+          onCancel={handleCloseLockedModal}
+          onAddTopics={handleGoToAddTopics}
+        />
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -269,7 +413,6 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
   },
   header: {
     flexDirection: "row",
@@ -279,6 +422,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
   },
   backButton: {
     padding: 8,
@@ -315,65 +459,94 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   subjectItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: "#F9FAFB",
+    borderColor: "transparent",
   },
-  selectedSubjectItem: {
-    borderColor: "#4F46E5",
-    backgroundColor: "#EEF2FF",
+  unlockedSubjectItem: {
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
   },
   lockedSubjectItem: {
     borderColor: "#E5E7EB",
-    backgroundColor: "#F3F4F6",
     opacity: 0.8,
   },
+  subjectItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderRadius: 15,
+  },
+  lockedSubjectItemContent: {
+    opacity: 0.7,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  subjectTextContainer: {
+    flex: 1,
+  },
+  subjectName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 4,
+  },
+  lockedSubjectName: {
+    color: "#6B7280",
+  },
+  lockedBadgeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E5E7EB",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  lockedLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "500",
+    marginLeft: 4,
+  },
   radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     borderColor: "#4F46E5",
-    marginRight: 12,
     justifyContent: "center",
     alignItems: "center",
   },
   radioButtonSelected: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "#4F46E5",
-  },
-  subjectName: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#1F2937",
-    flex: 1,
-  },
-  lockedSubjectName: {
-    color: "#9CA3AF",
-  },
-  lockedLabel: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    fontWeight: "500",
-    backgroundColor: "#E5E7EB",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
+    backgroundColor: "#FFFFFF",
   },
   continueButton: {
-    backgroundColor: "#000000",
+    backgroundColor: "#4F46E5",
     paddingVertical: 16,
     borderRadius: 100,
     alignItems: "center",
@@ -397,19 +570,30 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   noTopicsCard: {
-    backgroundColor: "#FEF3C7",
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 16,
+    padding: 24,
     marginBottom: 20,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  emptyStateIconContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: "#EEF2FF",
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
   },
   warningIcon: {
-    marginBottom: 12,
+    marginBottom: 20,
   },
   noTopicsTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    color: "#000000",
+    color: "#1F2937",
     marginBottom: 8,
     textAlign: "center",
   },
@@ -417,18 +601,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 24,
+    lineHeight: 20,
   },
   addTopicsButton: {
-    backgroundColor: "#ED7930",
+    backgroundColor: "#4F46E5",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 100,
     alignItems: "center",
+    width: "100%",
   },
   addTopicsButtonText: {
     color: "white",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   // Error styles
@@ -439,9 +625,9 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "600",
-    color: "#000000",
+    color: "#1F2937",
     marginBottom: 8,
     textAlign: "center",
   },
@@ -449,18 +635,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B5563",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 24,
   },
   retryButton: {
     backgroundColor: "#4F46E5",
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: 36,
     borderRadius: 100,
     alignItems: "center",
   },
   retryButtonText: {
     color: "white",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   // Modal styles
@@ -473,28 +659,35 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "85%",
     backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 24,
     alignItems: "center",
   },
-  modalIcon: {
+  lockedIconContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: "#EEF2FF",
+    borderRadius: 50,
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: "600",
-    color: "#000000",
+    fontWeight: "700",
+    color: "#1F2937",
     marginBottom: 12,
   },
   modalDescription: {
     fontSize: 14,
     color: "#4B5563",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 24,
+    lineHeight: 22,
   },
   addTopicsModalButton: {
     backgroundColor: "#4F46E5",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 100,
     alignItems: "center",
@@ -503,7 +696,7 @@ const styles = StyleSheet.create({
   },
   addTopicsModalButtonText: {
     color: "white",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   cancelButton: {
@@ -515,9 +708,12 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     color: "#4B5563",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "500",
   },
+  bottomSpacing: {
+    height: 40,
+  }
 });
 
 export default PracticeHomeScreen;
