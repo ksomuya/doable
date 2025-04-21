@@ -13,12 +13,17 @@ import { ArrowLeft, ChevronUp, ChevronDown, Zap } from "lucide-react-native";
 import { useAppContext } from "../context/AppContext";
 import ProgressBar from "../components/ProgressBar";
 import { LinearGradient } from "expo-linear-gradient";
+import { useAuth } from "@clerk/clerk-expo";
 
 const GoalSelectionScreen = () => {
   const router = useRouter();
   const { practiceProgress, updatePracticeStepInfo, startPracticeSession } = useAppContext();
   const [xpGoal, setXpGoal] = useState<number>(100);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  const { userId } = useAuth();
 
   // Update practice progress when screen loads
   useEffect(() => {
@@ -47,41 +52,84 @@ const GoalSelectionScreen = () => {
     }
   };
 
-  const handleStartSession = () => {
-    // Only proceed if we have subject and type from previous steps
+  const handleStartSession = async () => {
+    if (!userId) {
+      setStartError("User not authenticated. Please log in again.");
+      setIsLoading(false);
+      return;
+    }
     if (!practiceProgress.subject || !practiceProgress.type) {
+      console.error("Missing subject or type in practice progress context.");
+      setStartError("Missing subject or practice mode. Please go back.");
       return;
     }
 
-    // Update practice progress in context
-    updatePracticeStepInfo({
-      goal: xpGoal,
-      currentStep: 4 // Moving to final step (questions)
-    });
-
-    // Start the practice session
     setIsLoading(true);
-    
+    setStartError(null);
+
     // Store values to ensure they're not null
-    const subject = practiceProgress.subject;
-    const type = practiceProgress.type;
-    
-    setTimeout(() => {
-      startPracticeSession(
-        subject,
-        type,
-        xpGoal
-      );
-      setIsLoading(false);
+    const subjectId = practiceProgress.subject;
+    const mode = practiceProgress.type;
+    const goal = xpGoal;
+    const examId = "JEE_Main";
+
+    try {
+      const functionUrl = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/practice-start`;
+
+      console.log(`Calling ${functionUrl} with:`, { user_id: userId, exam_id: examId, subject_id: subjectId, mode, xp_goal: goal });
+
+      const response = await fetch(functionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          exam_id: examId,
+          subject_id: subjectId,
+          mode: mode,
+          xp_goal: goal,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("Practice start API error:", result);
+        throw new Error(result.error || `Failed to start practice session (${response.status})`);
+      }
+
+      if (!result.session_id) {
+        console.error("Practice start API response missing session_id:", result);
+        throw new Error("Invalid response from server when starting session.");
+      }
+
+      console.log("Practice session started successfully:", result.session_id);
+      
+      setSessionId(result.session_id);
+
+      updatePracticeStepInfo({
+        goal: goal,
+        currentStep: 4,
+        sessionId: result.session_id,
+      });
+
       router.push({
         pathname: "/practice/question",
         params: {
-          xp: xpGoal.toString(),
-          subject: subject,
-          type: type,
+          xp: goal.toString(),
+          subject: subjectId,
+          type: mode,
+          sessionId: result.session_id
         },
       });
-    }, 300);
+
+    } catch (error: any) {
+      console.error("Error starting practice session:", error);
+      setStartError(error.message || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -108,6 +156,12 @@ const GoalSelectionScreen = () => {
         <Text style={styles.subtitle}>
           How much XP do you want to earn in this session?
         </Text>
+
+        {startError && (
+           <View style={styles.errorDisplay}>
+             <Text style={styles.errorText}>{startError}</Text>
+           </View>
+         )}
 
         <View style={styles.xpSelectorContainer}>
           <TouchableOpacity
@@ -279,6 +333,18 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  errorDisplay: {
+    backgroundColor: '#FEE2E2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

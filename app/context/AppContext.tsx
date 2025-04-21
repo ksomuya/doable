@@ -14,6 +14,8 @@ type PracticeProgress = {
   subject: string | null;
   type: PracticeType | null;
   goal: number | null;
+  sessionId?: string | null;
+  sessionToken?: string | null;
 };
 
 type SurveyData = {
