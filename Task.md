@@ -126,7 +126,6 @@ Here is your full plan converted into a clean **step-by-step checklist** for Cur
     - Recall: 0.4 – 0.7
     - Conquer: > 0.7
   - [ ] Use RPC to fetch questions based on mode
-  - [ ] Remove user manual selection for questions
 
 ---
 
