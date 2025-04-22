@@ -147,7 +147,7 @@ serve(async (req: Request) => {
       .single();
 
     if (attemptError) {
-        console.error("Error inserting attempt:", attemptError.message);
+        console.error("Error inserting attempt:", attemptError);
         throw new Error("Failed to record question attempt.");
     }
     console.log("Attempt event inserted.");
@@ -167,6 +167,6 @@ serve(async (req: Request) => {
       status: 500,
     });
   }
-});
+}, { verifyJWT: false });
 
 console.log("Function 'practice-answer' ready to serve requests."); 

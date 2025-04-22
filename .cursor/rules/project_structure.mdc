@@ -1,0 +1,37 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project Structure and Key Files
+
+This is an Expo (React Native) project using TypeScript, Tailwind CSS, and Supabase.
+
+## Core Structure
+
+*   **App Code:** The main application code (screens, components) resides in the [`app/`](mdc:app) directory. This project uses file-based routing as specified by Expo Router.
+*   **Dependencies:** Project dependencies and scripts are managed in [`package.json`](mdc:package.json).
+*   **Expo Config:** Core Expo configuration is in [`app.json`](mdc:app.json).
+*   **EAS Build Config:** Configuration for EAS builds is in [`eas.json`](mdc:eas.json).
+*   **Static Assets:** Public assets are likely in [`public/`](mdc:public) and general assets in [`assets/`](mdc:assets).
+
+## Configuration
+
+*   **TypeScript:** Configuration is in [`tsconfig.json`](mdc:tsconfig.json).
+*   **Tailwind CSS:** Configuration is in [`tailwind.config.js`](mdc:tailwind.config.js). PostCSS config is in [`postcss.config.js`](mdc:postcss.config.js). Global styles might be in [`global.css`](mdc:global.css).
+*   **Babel:** Configuration is in [`babel.config.js`](mdc:babel.config.js).
+*   **Metro:** Configuration is in [`metro.config.js`](mdc:metro.config.js).
+
+## Native Features (Android - Distraction Blocker)
+
+The project includes a "Distraction Blocker" feature requiring native Android capabilities. This suggests the project might be using the Expo bare workflow or custom native modules.
+
+*   **Manifest:** Android permissions and service declarations are likely modified in [`android/app/src/main/AndroidManifest.xml`](mdc:android/app/src/main/AndroidManifest.xml) (Note: path might vary slightly). Requires `SYSTEM_ALERT_WINDOW` and `PACKAGE_USAGE_STATS` permissions.
+*   **Accessibility Service:** An Android Accessibility Service (`DistractionBlockerService`) is used. Configuration for this service should be in `res/xml/accessibility_service_config.xml` within the Android project structure (e.g., [`android/app/src/main/res/xml/accessibility_service_config.xml`](mdc:android/app/src/main/res/xml/accessibility_service_config.xml)).
+*   **Relevant Packages:** Uses `@react-native-async-storage/async-storage` and `expo-intent-launcher`.
+
+## Potentially Important Files
+
+*   [`README.md`](mdc:README.md): Contains project setup instructions and feature details.
+*   [`supabase/`](mdc:supabase): Directory likely containing Supabase-related files (check for migrations, functions, etc.).
+*   Various Markdown files (`user_flow_routes.md`, `supabse.md`, `recommendation-system.md`, `projectDoc`, `database_structure.md`, `Task.md`) seem to contain project documentation or specifications.
