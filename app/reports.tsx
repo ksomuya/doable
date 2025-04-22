@@ -50,6 +50,7 @@ import ReadinessEmptyState from './components/ReadinessEmptyState';
 import { useAuth } from "@clerk/clerk-expo";
 import { useUser } from "@clerk/clerk-expo";
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Svg, { Circle, Text as SvgText, G } from 'react-native-svg';
 
 interface StudySession {
   time: string;
@@ -120,7 +121,8 @@ const useAnimatedValues = () => {
 
 export default function ReportsScreen() {
   const router = useRouter();
-  const { user } = useAppContext();
+  // const { user: appContextUser } = useAppContext(); // Keep if needed for other context
+  const { user: clerkUser } = useUser(); // Get user object from Clerk
   const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState("performance");
   const [performancePeriod, setPerformancePeriod] = useState("daily");
@@ -143,10 +145,11 @@ export default function ReportsScreen() {
     isLoading: true,
   });
   const [readinessData, setReadinessData] = useState({
-    readinessScore: 0,
-    weakestSubjects: [],
-    weakestTopics: [],
+    readinessScore: null as number | null,
+    weakestSubjects: [] as Array<{ id: string, name: string, accuracy: number }>,
+    weakestTopics: [] as Array<{ id: string, name: string, accuracy: number }>,
     isLoading: true,
+    hasData: false,
   });
 
   const handleBackPress = () => {
@@ -168,210 +171,192 @@ export default function ReportsScreen() {
     router.push('/practice');
   };
 
-  // Fetch exam readiness data
+  // Fetch exam readiness data from the table
   const fetchReadinessData = async () => {
-    if (user?.email) {
+    if (clerkUser?.id) { // Use clerkUser.id
       try {
         setReadinessData(prev => ({ ...prev, isLoading: true }));
         
-        // Call the RPC to get readiness data
-        const { data, error } = await supabase.rpc(
-          'get_exam_readiness'
-        );
+        const { data, error } = await supabase
+          .from('rep_exam_readiness')
+          .select('readiness_score, weakest_subjects, weakest_topics')
+          .eq('user_id', clerkUser.id) // Use clerkUser.id
+          .maybeSingle(); 
         
         if (error) {
           console.error("Error fetching readiness data:", error);
-          // Don't throw the error, just set empty data
           setReadinessData({
-            readinessScore: 0,
+            readinessScore: null,
             weakestSubjects: [],
             weakestTopics: [],
             isLoading: false,
+            hasData: false,
           });
           return;
         }
         
-        if (data && data.length > 0) {
-          // Convert subject and topic arrays to the correct format
-          const subjects = Array.isArray(data[0].weakest_subjects) ? data[0].weakest_subjects : [];
-          const topics = Array.isArray(data[0].weakest_topics) ? data[0].weakest_topics : [];
+        if (data) {
+          const subjects = Array.isArray(data.weakest_subjects) ? data.weakest_subjects : [];
+          const topics = Array.isArray(data.weakest_topics) ? data.weakest_topics : [];
           
           setReadinessData({
-            readinessScore: data[0].readiness_score || 0,
+            readinessScore: data.readiness_score,
             weakestSubjects: subjects,
             weakestTopics: topics,
             isLoading: false,
+            hasData: true,
           });
         } else {
-          // No data found
           setReadinessData({
-            readinessScore: 0,
+            readinessScore: null,
             weakestSubjects: [],
             weakestTopics: [],
             isLoading: false,
+            hasData: false,
           });
         }
       } catch (error) {
         console.error("Error in readiness fetch:", error);
-        setReadinessData(prev => ({ ...prev, isLoading: false }));
+        setReadinessData(prev => ({ ...prev, isLoading: false, hasData: false }));
+      }
+    } else {
+      setReadinessData(prev => ({ ...prev, isLoading: false, hasData: false }));
+    }
+  };
+
+  // Fetch analytics and readiness data when the screen loads
+  useEffect(() => {
+    // Only run once after user is available
+    if (!clerkUser?.id || analyticsInitializedRef) return; // Use clerkUser.id
+    setAnalyticsInitializedRef(true); // Mark as initialized
+
+    const initializeData = async () => {
+      await fetchReadinessData();
+
+      try {
+        const token = await getToken({ template: 'supabase' });
+        // Pass Clerk user ID (UUID) to analytics utils if needed
+        // Assuming updateUserReports uses email internally or is adapted
+        const success = await updateUserReports(clerkUser.primaryEmailAddress?.emailAddress!, token || undefined); // Use Clerk email
+        if (success) {
+          console.log('Reports updated successfully');
+        }
+      } catch (error) {
+        console.error('Error updating reports:', error);
+      }
+
+      fetchAnalyticsData();
+    };
+
+    initializeData();
+  }, [clerkUser?.id, getToken]); // Depend on clerkUser.id
+
+  // Fetch analytics data (excluding readiness, handled above)
+  const fetchAnalyticsData = async () => {
+    if (clerkUser?.id) { // Use clerkUser.id
+      try {
+        setAnalyticsData(prev => ({ ...prev, isLoading: true })); 
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { data: dailyOverview, error: dailyError } = await supabase
+          .from('rep_daily_overview')
+          .select('*')
+          .eq('user_id', clerkUser.id) // Use clerkUser.id
+          .eq('day', today)
+          .maybeSingle();
+          
+        if (dailyError && dailyError.code !== 'PGRST116') {
+          console.error("Error fetching daily overview:", dailyError);
+        }
+        
+        const { data: studySessions, error: sessionsError } = await supabase
+          .from('evt_study_sessions')
+          .select('*')
+          .eq('user_id', clerkUser.id) // Use clerkUser.id
+          .gte('start_time', `${today}T00:00:00`)
+          .lt('start_time', `${today}T23:59:59`);
+          
+        if (sessionsError) {
+          console.error("Error fetching study sessions:", sessionsError);
+        }
+        
+        const { data: studiedTopics, error: topicsError } = await supabase
+          .from('user_studied_topics')
+          .select('topic_name, created_at')
+          .eq('user_id', clerkUser.id) // Use clerkUser.id
+          .eq('study_date', today);
+          
+        if (topicsError) {
+          console.error("Error fetching studied topics:", topicsError);
+        }
+        
+        const { data: questionAttempts, error: attemptsError } = await supabase
+          .from('evt_question_attempts')
+          .select('*')
+          .eq('user_id', clerkUser.id) // Use clerkUser.id
+          .gte('completed_at', `${today}T00:00:00`)
+          .lt('completed_at', `${today}T23:59:59`);
+          
+        if (attemptsError) {
+          console.error("Error fetching question attempts:", attemptsError);
+        }
+        
+        const totalQuestions = questionAttempts?.length || 0;
+        const correctAnswers = questionAttempts?.filter(q => q.is_correct)?.length || 0;
+        const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+        
+        const sessions = studySessions?.map((session: any) => {
+          const startTime = new Date(session.start_time);
+          const duration = session.duration_minutes || 
+            (session.end_time ? Math.round((new Date(session.end_time).getTime() - startTime.getTime()) / (1000 * 60)) : 0);
+            
+          return {
+            time: startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            duration: duration,
+            score: Math.floor(Math.random() * 30) + 70
+          };
+        }) || [];
+        
+        const studyTime = sessions.reduce((sum, session) => sum + (session.duration || 0), 0) / 60;
+        
+        const calculatedDailyData: DailyAnalyticsData = {
+          date: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+          totalQuestions,
+          correctAnswers,
+          accuracy,
+          averageTime: questionAttempts?.reduce((sum: number, q: any) => sum + (q.time_taken_seconds || 0), 0) / (totalQuestions || 1),
+          studyTime: studyTime > 0 ? studyTime : dailyOverview?.study_minutes_total ? dailyOverview.study_minutes_total / 60 : 0,
+          topicsStudied: studiedTopics?.map(t => t.topic_name) || [],
+          sessions: sessions.length > 0 ? sessions : [],
+        };
+        
+        setAnalyticsData(prev => ({
+          ...prev,
+          dailyData: calculatedDailyData,
+          isLoading: false,
+        }));
+        
+      } catch (error) {
+        console.error("Error in analytics fetch:", error);
+        setAnalyticsData(prev => ({ ...prev, isLoading: false }));
       }
     }
   };
 
-  // Fetch analytics and readiness data when the screen loads - fixed to prevent infinite loops
-  useEffect(() => {
-    // Skip if already initialized 
-    if (analyticsInitializedRef.current) return;
-    analyticsInitializedRef.current = true;
-
-    if (user && user.email) {
-      // Only update reports once
-      const updateReports = async () => {
-        if (reportsUpdatedRef.current) return;
-        
-        try {
-          // Set the ref to true to prevent multiple calls
-          reportsUpdatedRef.current = true;
-          
-          const token = await getToken({ template: 'supabase' });
-          const success = await updateUserReports(user.email, token || undefined);
-          
-          if (success) {
-            console.log('Reports updated successfully');
-            // Fetch readiness data after reports are updated
-            fetchReadinessData();
-          }
-        } catch (error) {
-          console.error('Error updating reports:', error);
-        }
-      };
-      
-      updateReports();
-       
-      // Fetch analytics data (only once)
-      const fetchAnalyticsData = async () => {
-        if (user && user.email) {
-          try {
-            // Get today's date and convert to ISO string format YYYY-MM-DD
-            const today = new Date().toISOString().split('T')[0];
-            
-            // Fetch daily overview data
-            const { data: dailyOverview, error: dailyError } = await supabase
-              .from('rep_daily_overview')
-              .select('*')
-              .eq('user_id', user.email)
-              .eq('day', today)
-              .single();
-              
-            if (dailyError && dailyError.code !== 'PGRST116') {
-              console.error("Error fetching daily overview:", dailyError);
-            }
-            
-            // Fetch study sessions for today
-            const { data: studySessions, error: sessionsError } = await supabase
-              .from('evt_study_sessions')
-              .select('*')
-              .eq('user_id', user.email)
-              .gte('start_time', `${today}T00:00:00`)
-              .lt('start_time', `${today}T23:59:59`);
-              
-            if (sessionsError) {
-              console.error("Error fetching study sessions:", sessionsError);
-            }
-            
-            // Fetch studied topics for today
-            const { data: studiedTopics, error: topicsError } = await supabase
-              .from('user_studied_topics')
-              .select('topic_name, created_at')
-              .eq('user_id', user.email)
-              .eq('study_date', today);
-              
-            if (topicsError) {
-              console.error("Error fetching studied topics:", topicsError);
-            }
-            
-            // Fetch question attempts for today
-            const { data: questionAttempts, error: attemptsError } = await supabase
-              .from('evt_question_attempts')
-              .select('*')
-              .eq('user_id', user.email)
-              .gte('completed_at', `${today}T00:00:00`)
-              .lt('completed_at', `${today}T23:59:59`);
-              
-            if (attemptsError) {
-              console.error("Error fetching question attempts:", attemptsError);
-            }
-            
-            // Calculate daily metrics
-            const totalQuestions = questionAttempts?.length || 0;
-            const correctAnswers = questionAttempts?.filter(q => q.is_correct)?.length || 0;
-            const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
-            
-            // Format study sessions
-            const sessions = studySessions?.map((session: any) => {
-              const startTime = new Date(session.start_time);
-              const duration = session.duration_minutes || 
-                (session.end_time ? Math.round((new Date(session.end_time).getTime() - startTime.getTime()) / (1000 * 60)) : 0);
-                
-              return {
-                time: startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                duration: duration,
-                score: Math.floor(Math.random() * 30) + 70 // Placeholder score since we don't track per-session score
-              };
-            }) || [];
-            
-            // Aggregate study time
-            const studyTime = sessions.reduce((sum, session) => sum + (session.duration || 0), 0) / 60; // Convert to hours
-            
-            // Build the daily data object
-            const calculatedDailyData: DailyAnalyticsData = {
-              date: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
-              totalQuestions,
-              correctAnswers,
-              accuracy,
-              averageTime: questionAttempts?.reduce((sum: number, q: any) => sum + (q.time_taken_seconds || 0), 0) / (totalQuestions || 1),
-              studyTime: studyTime > 0 ? studyTime : dailyOverview?.study_minutes_total ? dailyOverview.study_minutes_total / 60 : 0,
-              topicsStudied: studiedTopics?.map(t => t.topic_name) || [],
-              sessions: sessions.length > 0 ? sessions : [
-                { time: "8:30 AM", duration: 45, score: 85 },
-                { time: "1:15 PM", duration: 30, score: 92 },
-              ],
-            };
-            
-            setAnalyticsData({
-              dailyData: calculatedDailyData,
-              weeklyData: null, // Placeholder - would come from real data
-              monthlyData: null, // Placeholder - would come from real data
-              performanceData: null,
-              isLoading: false,
-            });
-            
-          } catch (error) {
-            console.error("Error in analytics fetch:", error);
-            setAnalyticsData(prev => ({ ...prev, isLoading: false }));
-          }
-        }
-      };
-      
-      fetchAnalyticsData();
-      fetchPerformanceData();
-    }
-  }, [user?.email]); // Only depends on user.email
-
   // Separate effect for performance data that should update when period changes
   useEffect(() => {
-    if (user?.email && analyticsInitializedRef.current) {
+    if (clerkUser?.id && analyticsInitializedRef) { // Use clerkUser.id and check initialization
       fetchPerformanceData();
     }
-  }, [performancePeriod, user?.email]);
+  }, [performancePeriod, clerkUser?.id, analyticsInitializedRef]); // Add dependency
 
   // Fetch performance data from Supabase using the RPC
   const fetchPerformanceData = async () => {
-    if (user && user.email) {
+    if (clerkUser?.id) { // Use clerkUser.id
       try {
-        setAnalyticsData(prev => ({ ...prev, isLoading: true }));
+        setAnalyticsData(prev => ({ ...prev, performanceData: { ...prev.performanceData, isLoading: true } })); 
         
-        // Get date range based on selected period
         let startDate: string | null = null;
         const today = new Date();
         const endDate = today.toISOString();
@@ -388,15 +373,12 @@ export default function ReportsScreen() {
           const lastMonth = new Date(today);
           lastMonth.setMonth(lastMonth.getMonth() - 1);
           startDate = lastMonth.toISOString();
-        } else if (performancePeriod === "all") {
-          startDate = null; // No start date means all time
         }
-        
-        // Call the get_detailed_metrics RPC for subject level metrics
+
         const { data: subjectData, error: subjectError } = await supabase.rpc(
           'get_detailed_metrics',
           {
-            p_user_id: user.email,
+            p_user_id: clerkUser.id, // Use clerkUser.id
             p_period_start: startDate,
             p_period_end: endDate,
             p_granularity: 'subject'
@@ -408,11 +390,10 @@ export default function ReportsScreen() {
           throw subjectError;
         }
         
-        // Call the get_detailed_metrics RPC for topic level metrics
         const { data: topicData, error: topicError } = await supabase.rpc(
           'get_detailed_metrics',
           {
-            p_user_id: user.email,
+            p_user_id: clerkUser.id, // Use clerkUser.id
             p_period_start: startDate,
             p_period_end: endDate,
             p_granularity: 'topic'
@@ -424,7 +405,6 @@ export default function ReportsScreen() {
           throw topicError;
         }
         
-        // Update state with the performance data
         setAnalyticsData(prev => ({
           ...prev,
           performanceData: {
@@ -432,7 +412,6 @@ export default function ReportsScreen() {
             topicMetrics: topicData || [],
             isLoading: false
           },
-          isLoading: false
         }));
         
       } catch (error) {
@@ -444,81 +423,14 @@ export default function ReportsScreen() {
             topicMetrics: [],
             isLoading: false
           },
-          isLoading: false 
         }));
       }
     }
   };
 
-  // Mock data for performance metrics (used as fallback if real data isn't available)
-  const dailyData = analyticsData.dailyData || {
-    date: "Today, October 18, 2023",
-    totalQuestions: 42,
-    correctAnswers: 35,
-    averageTime: 38, // seconds per question
-    studyTime: 2.5, // hours
-    topicsStudied: ["Organic Chemistry", "Electromagnetism", "Calculus"],
-    sessions: [
-      { time: "8:30 AM", duration: 45, score: 85 },
-      { time: "1:15 PM", duration: 30, score: 92 },
-      { time: "7:00 PM", duration: 75, score: 78 },
-    ],
-  };
-
-  const weeklyData = {
-    dateRange: "Oct 12 - Oct 18, 2023",
-    totalQuestions: 245,
-    correctAnswers: 186,
-    averageTime: 42, // seconds per question
-    studyTime: 14.5, // hours
-    dailyBreakdown: [
-      { day: "Mon", questions: 35, accuracy: 76 },
-      { day: "Tue", questions: 42, accuracy: 81 },
-      { day: "Wed", questions: 28, accuracy: 68 },
-      { day: "Thu", questions: 54, accuracy: 85 },
-      { day: "Fri", questions: 39, accuracy: 74 },
-      { day: "Sat", questions: 25, accuracy: 72 },
-      { day: "Sun", questions: 22, accuracy: 68 },
-    ],
-    weakTopics: [
-      { name: "Organic Chemistry", accuracy: 62 },
-      { name: "Electromagnetism", accuracy: 68 },
-    ],
-    strongTopics: [
-      { name: "Mechanics", accuracy: 94 },
-      { name: "Algebra", accuracy: 91 },
-    ],
-  };
-
-  const monthlyData = {
-    month: "October 2023",
-    totalQuestions: 1250,
-    correctAnswers: 875,
-    averageTime: 45, // seconds per question
-    studyTime: 58, // hours
-    weeklyBreakdown: [
-      { week: "Week 1", questions: 305, accuracy: 78 },
-      { week: "Week 2", questions: 342, accuracy: 72 },
-      { week: "Week 3", questions: 398, accuracy: 68 },
-      { week: "Week 4", questions: 205, accuracy: 75 },
-    ],
-    improvement: 8, // percentage improvement
-    longestStreak: 14, // days
-    weakTopics: [
-      { name: "Organic Chemistry", accuracy: 62 },
-      { name: "Electromagnetism", accuracy: 68 },
-      { name: "Calculus", accuracy: 71 },
-    ],
-    strongTopics: [
-      { name: "Mechanics", accuracy: 94 },
-      { name: "Algebra", accuracy: 91 },
-      { name: "Inorganic Chemistry", accuracy: 89 },
-    ],
-  };
-
   // Function to render the appropriate report content based on performance period
   const renderPerformanceContent = () => {
-    if (analyticsData.isLoading) {
+    if (!analyticsData.performanceData || analyticsData.performanceData.isLoading) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4F46E5" />
@@ -841,16 +753,191 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6B7280",
   },
+  readinessContainer: {
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    margin: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  readinessTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 24,
+  },
+  gaugeContainer: {
+    marginBottom: 24,
+  },
+  detailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0E7FF',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  detailsButtonText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+    marginLeft: 6,
+    fontSize: 14,
+  },
+  practiceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4F46E5',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 16,
+    width: '80%',
+    justifyContent: 'center',
+  },
+  practiceButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    backgroundColor: '#F9FAFB',
+    margin: 16,
+    borderRadius: 12,
+    minHeight: 350,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 20,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  emptyStateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4F46E5',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
+    paddingBottom: 30,
+    maxHeight: '75%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  closeButton: {
+    padding: 5,
+  },
+  modalScore: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 16,
+  },
+  weakItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  weakItemName: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+    marginRight: 8,
+  },
+  weakItemAccuracy: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  noWeakItems: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  modalPracticeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4F46E5',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+  modalPracticeButtonText: {
+    color: '#FFF',
+    fontWeight: '600',
+    fontSize: 16,
+  },
 });
 
 // Component to display the daily performance report
-const DailyReportComponent = ({ data }: { data: any }) => {
+const DailyReportComponent = ({ data }: { data: DailyAnalyticsData | null }) => {
   if (!data) return null;
   
   return (
     <View style={{ padding: 16 }}>
       <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Daily Performance Report</Text>
-      {/* Implement your daily report UI here with the data */}
       <Text>Total Questions: {data?.totalQuestions || 0}</Text>
       <Text>Correct Answers: {data?.correctAnswers || 0}</Text>
       <Text>Accuracy: {data?.totalQuestions ? Math.round((data.correctAnswers / data.totalQuestions) * 100) : 0}%</Text>
@@ -865,7 +952,6 @@ const WeeklyReportComponent = ({ data }: { data: any }) => {
   return (
     <View style={{ padding: 16 }}>
       <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Weekly Performance Report</Text>
-      {/* Implement your weekly report UI here with the data */}
       <Text>Total Questions: {data?.totalQuestions || 0}</Text>
       <Text>Correct Answers: {data?.correctAnswers || 0}</Text>
       <Text>Accuracy: {data?.totalQuestions ? Math.round((data.correctAnswers / data.totalQuestions) * 100) : 0}%</Text>
@@ -880,7 +966,6 @@ const MonthlyReportComponent = ({ data }: { data: any }) => {
   return (
     <View style={{ padding: 16 }}>
       <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Monthly Performance Report</Text>
-      {/* Implement your monthly report UI here with the data */}
       <Text>Total Questions: {data?.totalQuestions || 0}</Text>
       <Text>Correct Answers: {data?.correctAnswers || 0}</Text>
       <Text>Accuracy: {data?.totalQuestions ? Math.round((data.correctAnswers / data.totalQuestions) * 100) : 0}%</Text>
@@ -889,8 +974,19 @@ const MonthlyReportComponent = ({ data }: { data: any }) => {
 };
 
 // Component to display the readiness report
-const ReadinessReportComponent = ({ data, onOpenDetails, onStartPractice }: { data: any, onOpenDetails: () => void, onStartPractice: () => void }) => {
-  if (!data || data.isLoading) {
+const ReadinessReportComponent = ({ data, onOpenDetails, onStartPractice }: { 
+  data: { 
+    readinessScore: number | null; 
+    isLoading: boolean; 
+    hasData: boolean; 
+    weakestSubjects: any[]; // Keep type simple for now
+    weakestTopics: any[]; // Keep type simple for now
+  }; 
+  onOpenDetails: () => void; 
+  onStartPractice: () => void 
+}) => {
+  
+  if (data.isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F46E5" />
@@ -898,36 +994,104 @@ const ReadinessReportComponent = ({ data, onOpenDetails, onStartPractice }: { da
       </View>
     );
   }
+
+  if (!data.hasData) {
+    return (
+       <View style={styles.emptyStateContainer}>
+          <Target size={60} color="#9CA3AF" />
+          <Text style={styles.emptyStateTitle}>Calculate Your Readiness</Text>
+          <Text style={styles.emptyStateText}>
+            Complete more practice questions to generate your personalized exam readiness report and identify weak areas.
+          </Text>
+          <TouchableOpacity 
+            style={styles.emptyStateButton}
+            onPress={onStartPractice}
+          >
+            <Text style={styles.emptyStateButtonText}>Start Practice</Text>
+          </TouchableOpacity>
+        </View>
+    );
+  }
+
+  const score = data.readinessScore ?? 0;
+  const radius = 80;
+  const strokeWidth = 15;
+  const size = (radius + strokeWidth) * 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = score / 100;
+  const strokeDashoffset = circumference * (1 - progress);
+
+  const getColor = (score: number) => {
+    if (score < 40) return '#EF4444';
+    if (score < 70) return '#F59E0B';
+    return '#10B981';
+  };
   
+  const color = getColor(score);
+
   return (
-    <View style={{ padding: 16 }}>
-      <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12 }}>Readiness Report</Text>
-      <Text>Readiness Score: {data.readinessScore}%</Text>
+    <View style={styles.readinessContainer}>
+      <Text style={styles.readinessTitle}>Exam Readiness</Text>
       
+      <View style={styles.gaugeContainer}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <G rotation="-90" origin={`${size/2}, ${size/2}`}>
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke="#E5E7EB"
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+            />
+          </G>
+          <SvgText
+            x={size / 2}
+            y={(size / 2) + (radius * 0.1)}
+            textAnchor="middle"
+            fontSize={radius * 0.4}
+            fontWeight="bold"
+            fill={color}
+          >
+            {`${Math.round(score)}%`}
+          </SvgText>
+           <SvgText
+            x={size / 2}
+            y={(size / 2) + (radius * 0.5)}
+            textAnchor="middle"
+            fontSize={radius * 0.15}
+            fill="#6B7280"
+          >
+            Readiness
+          </SvgText>
+        </Svg>
+      </View>
+
       <TouchableOpacity 
-        style={{ 
-          backgroundColor: '#4F46E5', 
-          padding: 12, 
-          borderRadius: 8, 
-          alignItems: 'center',
-          marginTop: 16 
-        }}
+        style={styles.detailsButton}
         onPress={onOpenDetails}
       >
-        <Text style={{ color: '#FFF', fontWeight: '600' }}>View Details</Text>
+        <Info size={16} color="#4F46E5" />
+        <Text style={styles.detailsButtonText}>View Weak Areas</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
-        style={{ 
-          backgroundColor: '#10B981', 
-          padding: 12, 
-          borderRadius: 8, 
-          alignItems: 'center',
-          marginTop: 12 
-        }}
+        style={styles.practiceButton}
         onPress={onStartPractice}
       >
-        <Text style={{ color: '#FFF', fontWeight: '600' }}>Start Practice</Text>
+        <Zap size={16} color="#FFF" />
+        <Text style={styles.practiceButtonText}>Start Refine Session</Text> 
       </TouchableOpacity>
     </View>
   );
@@ -943,21 +1107,19 @@ const ReadinessDetailsModal = ({
 }: { 
   visible: boolean,
   onClose: () => void,
-  readinessScore: number,
-  weakestSubjects: Array<{ name: string, score: number, id?: string }>,
-  weakestTopics: Array<{ name: string, score: number, id?: string }>
+  readinessScore: number | null,
+  weakestSubjects: Array<{ id: string, name: string, accuracy: number }>,
+  weakestTopics: Array<{ id: string, name: string, accuracy: number }>
 }) => {
   const router = useRouter();
   
-  // Handle start refine session
-  const handleStartPractice = () => {
-    // Close the modal
-    onClose();
-    
-    // Navigate to the practice screen
-    router.push('/practice');
+  const handleStartRefineSession = () => {
+    onClose(); 
+    router.push('/practice'); 
   };
   
+  const score = readinessScore ?? 0;
+
   return (
     <Modal
       visible={visible}
@@ -965,64 +1127,47 @@ const ReadinessDetailsModal = ({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={{ 
-        flex: 1, 
-        backgroundColor: 'rgba(0,0,0,0.5)', 
-        justifyContent: 'center',
-        padding: 16
-      }}>
-        <View style={{ 
-          backgroundColor: '#FFF', 
-          borderRadius: 12, 
-          padding: 20 
-        }}>
-          <View style={{ 
-            flexDirection: 'row', 
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 16
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: '700' }}>Readiness Details</Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#1F2937" />
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Readiness Details</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
           
-          <Text style={{ fontSize: 16, marginBottom: 12 }}>Readiness Score: {readinessScore}%</Text>
+          <Text style={styles.modalScore}>Overall Readiness: {Math.round(score)}%</Text>
           
-          <Text style={{ fontSize: 16, fontWeight: '600', marginTop: 16 }}>Weakest Subjects</Text>
+          <Text style={styles.modalSectionTitle}>Weakest Subjects</Text>
           {weakestSubjects.length > 0 ? (
-            weakestSubjects.map((subject: { name: string, score: number, id?: string }, index: number) => (
-              <View key={index} style={{ marginVertical: 8 }}>
-                <Text>{subject.name}: {subject.score}%</Text>
+            weakestSubjects.map((subject) => (
+              <View key={subject.id} style={styles.weakItem}>
+                <Text style={styles.weakItemName}>{subject.name}</Text>
+                <Text style={styles.weakItemAccuracy}>{Math.round(subject.accuracy * 100)}% Accuracy</Text>
               </View>
             ))
           ) : (
-            <Text style={{ marginTop: 8, color: '#6B7280' }}>No weak subjects identified</Text>
+            <Text style={styles.noWeakItems}>No specific weak subjects identified based on recent practice.</Text>
           )}
           
-          <Text style={{ fontSize: 16, fontWeight: '600', marginTop: 16 }}>Weakest Topics</Text>
+          <Text style={styles.modalSectionTitle}>Weakest Topics</Text>
           {weakestTopics.length > 0 ? (
-            weakestTopics.map((topic: { name: string, score: number, id?: string }, index: number) => (
-              <View key={index} style={{ marginVertical: 8 }}>
-                <Text>{topic.name}: {topic.score}%</Text>
+            weakestTopics.map((topic) => (
+              <View key={topic.id} style={styles.weakItem}>
+                <Text style={styles.weakItemName}>{topic.name}</Text>
+                 <Text style={styles.weakItemAccuracy}>{Math.round(topic.accuracy * 100)}% Accuracy</Text>
               </View>
             ))
           ) : (
-            <Text style={{ marginTop: 8, color: '#6B7280' }}>No weak topics identified</Text>
+            <Text style={styles.noWeakItems}>No specific weak topics identified based on recent practice.</Text>
           )}
           
           <TouchableOpacity 
-            style={{ 
-              backgroundColor: '#4F46E5', 
-              padding: 12, 
-              borderRadius: 8, 
-              alignItems: 'center',
-              marginTop: 24 
-            }}
-            onPress={handleStartPractice}
+            style={styles.modalPracticeButton}
+            onPress={handleStartRefineSession} 
           >
-            <Text style={{ color: '#FFF', fontWeight: '600' }}>Start Practice</Text>
+             <Zap size={16} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.modalPracticeButtonText}>Start Refine Session</Text>
           </TouchableOpacity>
         </View>
       </View>
